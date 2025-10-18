@@ -40,8 +40,8 @@
         </header>
 
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải và Cắt Ảnh (Hỗ trợ JPG/PNG/TIF)</h2>
-            <input type="file" id="fileInput" accept="image/*, .tif, .tiff" class="w-full text-sm file:text-transparent
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải và Cắt Ảnh (Chỉ hỗ trợ JPG/PNG/WEBP)</h2>
+            <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" class="w-full text-sm file:text-transparent
                 file:mr-4 file:py-2 file:px-4 file:text-white
                 file:rounded-full file:border-0 file:cursor-pointer
                 file:text-sm file:font-bold file:shadow
@@ -220,4 +220,413 @@
         // --- HÀM HỖ TRỢ CHUNG (GHÉP PDF) ---
         function showMergeMessage(message, type = 'info') {
             pdfMergeMessage.textContent = message;
-            pdfMergeMessage.className =
+            pdfMergeMessage.className = 'mt-4 p-3 text-sm rounded-lg';
+            pdfMergeMessage.classList.remove('hidden');
+
+            switch (type) {
+                case 'error':
+                    pdfMergeMessage.classList.add('text-red-700', 'bg-red-100', 'border-red-300');
+                    break;
+                case 'success':
+                    pdfMergeMessage.classList.add('text-green-700', 'bg-green-100', 'border-green-300');
+                    break;
+                case 'info':
+                default:
+                    pdfMergeMessage.classList.add('text-blue-700', 'bg-blue-100', 'border-blue-300');
+                    break;
+            }
+        }
+
+        // --- HÀM XỬ LÝ ẢNH & CANVAS ---
+
+        function drawImage() {
+            if (!originalImage) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const rotation = rotationAngle % 360;
+            const isRotated = rotation === 90 || rotation === 270;
+
+            const canvasWidth = isRotated ? originalImage.height : originalImage.width;
+            const canvasHeight = isRotated ? originalImage.width : originalImage.height;
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            ctx.save();
+            ctx.translate(canvasWidth / 2, canvasHeight / 2);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+            ctx.restore();
+
+            drawCropOverlay(canvasWidth, canvasHeight);
+        }
+
+        function drawCropOverlay(currentCanvasWidth, currentCanvasHeight) {
+            const { x, y, width, height } = cropBox;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            
+            ctx.fillRect(0, 0, currentCanvasWidth, y);
+            ctx.fillRect(0, y + height, currentCanvasWidth, currentCanvasHeight - (y + height));
+            ctx.fillRect(0, y, x, height);
+            ctx.fillRect(x + width, y, currentCanvasWidth - (x + width), height);
+
+            ctx.strokeStyle = '#22C55E'; 
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 5]); 
+            ctx.strokeRect(x, y, width, height);
+            ctx.setLineDash([]); 
+
+            ctx.fillStyle = '#22C55E';
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+
+            const handles = [
+                { x: x, y: y, cursor: 'nwse-resize' },                   
+                { x: x + width, y: y, cursor: 'nesw-resize' },           
+                { x: x, y: y + height, cursor: 'nesw-resize' },          
+                { x: x + width, y: y + height, cursor: 'nwse-resize' }   
+            ];
+
+            handles.forEach(h => {
+                ctx.beginPath();
+                ctx.arc(h.x, h.y, HANDLE_SIZE / 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+        
+        function cropImage() {
+            if (!originalImage || cropBox.width <= 0 || cropBox.height <= 0) return null;
+
+            const sourceX = cropBox.x;
+            const sourceY = cropBox.y;
+            const cropWidth = cropBox.width;
+            const cropHeight = cropBox.height;
+            
+            const rotation = rotationAngle % 360;
+            const isRotated = rotation === 90 || rotation === 270;
+            const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
+            const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = rotatedWidth;
+            tempCanvas.height = rotatedHeight;
+
+            tempCtx.save();
+            tempCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+            tempCtx.rotate(rotation * Math.PI / 180);
+            tempCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+            tempCtx.restore();
+
+            const finalCanvas = document.createElement('canvas');
+            const finalCtx = finalCanvas.getContext('2d');
+            finalCanvas.width = cropWidth;
+            finalCanvas.height = cropHeight;
+
+            try {
+                const imageData = tempCtx.getImageData(sourceX, sourceY, cropWidth, cropHeight);
+                finalCtx.putImageData(imageData, 0, 0);
+            } catch (error) {
+                console.error("Lỗi khi lấy/đặt dữ liệu ảnh:", error);
+                return null;
+            }
+
+            return finalCanvas.toDataURL('image/jpeg', 0.95);
+        }
+        
+        function createPdfFromMultipleImages() {
+            const imagesData = [croppedImage1, croppedImage2, croppedImage3, croppedImage4];
+            const images = imagesData.filter(img => img !== null);
+            
+            if (images.length === 0) {
+                showMessage('Vui lòng cắt và lưu ít nhất một Phần ảnh trước khi tạo PDF.', 'error');
+                return;
+            }
+            
+            try {
+                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                
+                const a4Width = 210;
+                const a4Height = 297; 
+                const margin = 10;
+                const usableWidth = a4Width - 2 * margin; 
+                let currentY = margin;
+                const spacing = 10; 
+                
+                images.forEach((imgDataUrl, index) => {
+                    const img = document.createElement('img');
+                    img.src = imgDataUrl;
+                    
+                    const imgWidthPx = img.width || 1000; 
+                    const imgHeightPx = img.height || 600; 
+                    
+                    const aspectRatio = imgWidthPx / imgHeightPx;
+                    
+                    const imageWidthMM = usableWidth; 
+                    const imageHeightMM = imageWidthMM / aspectRatio;
+
+                    if (currentY + imageHeightMM > a4Height - margin) {
+                        doc.addPage(); 
+                        currentY = margin;
+                    }
+                    
+                    doc.addImage(imgDataUrl, 'JPEG', margin, currentY, imageWidthMM, imageHeightMM);
+                    
+                    currentY += imageHeightMM + spacing;
+                });
+
+                const signatureText = "][";
+                doc.setFont('Times', 'normal'); 
+                doc.setFontSize(9); 
+                const signatureMargin = 10;
+                const signatureX = a4Width - signatureMargin; 
+                const signatureY = a4Height - signatureMargin; 
+
+                doc.setPage(doc.internal.pages.length);
+                doc.text(signatureText, signatureX, signatureY, { align: 'right' });
+
+
+                const pdfBlob = doc.output('blob');
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `GCN_CatGhep_${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url); 
+
+                showMessage(`Đã tạo file PDF A4 thành công! Gồm ${images.length} phần ảnh đã cắt.`, 'success');
+
+            } catch (error) {
+                console.error("LỖI KHI XUẤT PDF:", error);
+                showMessage(`LỖI: Không thể tạo file PDF. Chi tiết lỗi: ${error.message}. Vui lòng kiểm tra console (F12) hoặc thử lại với ảnh nhỏ hơn.`, 'error');
+            }
+        }
+        
+        // --- LOGIC GHÉP PDF ---
+
+        async function mergePdfs() {
+            const files = pdfFileInput.files;
+            if (files.length < 2) {
+                showMergeMessage('Vui lòng chọn ít nhất 2 file PDF để ghép.', 'error');
+                return;
+            }
+
+            mergePdfButton.disabled = true;
+            showMergeMessage(`Đang tiến hành ghép ${files.length} file PDF... Vui lòng chờ. Quá trình này có thể mất vài phút với file lớn.`, 'info');
+
+            try {
+                const { PDFDocument } = window.PDFLib;
+                const mergedPdf = await PDFDocument.create();
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    
+                    // Tải file PDF vào PDFDocument
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    
+                    // Sao chép tất cả các trang của PDF hiện tại vào PDF đích
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => {
+                        mergedPdf.addPage(page);
+                    });
+                }
+
+                const mergedPdfBytes = await mergedPdf.save();
+                
+                const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `PDF_DaGhep_${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showMergeMessage(`Đã ghép thành công ${files.length} file PDF!`, 'success');
+
+            } catch (error) {
+                console.error("LỖI KHI GHÉP PDF:", error);
+                showMergeMessage(`LỖI: Không thể ghép file PDF. Chi tiết lỗi: ${error.message}. Vui lòng kiểm tra console (F12) hoặc thử lại.`, 'error');
+            } finally {
+                mergePdfButton.disabled = false;
+                pdfFileInput.value = '';
+                pdfFileInput.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // --- HÀM XỬ LÝ TƯƠNG TÁC (KÉO THẢ) (GIỮ NGUYÊN) ---
+        
+        function getHandleAt(x, y) {
+            const { x: cx, y: cy, width: cw, height: ch } = cropBox;
+            const h = HANDLE_SIZE / 2;
+            const handles = {
+                'tl': { x: cx, y: cy },
+                'tr': { x: cx + cw, y: cy },
+                'bl': { x: cx, y: cy + ch },
+                'br': { x: cx + cw, y: cy + ch },
+            };
+            for (const key in handles) {
+                const handle = handles[key];
+                if (x >= handle.x - h && x <= handle.x + h && y >= handle.y - h && y <= handle.y + h) {
+                    return key;
+                }
+            }
+            if (x >= cx + h && x <= cx + cw - h && y >= cy + h && y <= cy + ch - h) {
+                return 'move';
+            }
+            return null;
+        }
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+
+        function handleMouseDown(e) {
+            if (!originalImage) return;
+            const pos = getMousePos(e);
+            dragHandle = getHandleAt(pos.x, pos.y);
+            if (dragHandle) {
+                e.preventDefault();
+                e.stopPropagation();
+                isDragging = true;
+                startX = pos.x;
+                startY = pos.y;
+                cropStart = { ...cropBox };
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (!isDragging || !originalImage) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const pos = getMousePos(e);
+            const dx = pos.x - startX;
+            const dy = pos.y - startY;
+            updateCropBox(dx, dy);
+            drawImage();
+        }
+
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                dragHandle = null;
+                showMessage(`Đã tùy chỉnh khung cắt. X: ${Math.round(cropBox.x)}, Y: ${Math.round(cropBox.y)}, W: ${Math.round(cropBox.width)}, H: ${Math.round(cropBox.height)}`, 'info');
+            }
+        }
+
+        function getTouchPos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const touch = evt.touches[0];
+            return {
+                x: (touch.clientX - rect.left) * scaleX,
+                y: (touch.clientY - rect.top) * scaleY
+            };
+        }
+
+        function handleTouchStart(e) {
+            if (!originalImage) return;
+            const pos = getTouchPos(e);
+            dragHandle = getHandleAt(pos.x, pos.y);
+            if (dragHandle) {
+                e.preventDefault();
+                e.stopPropagation();
+                isDragging = true;
+                startX = pos.x;
+                startY = pos.y;
+                cropStart = { ...cropBox };
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (!isDragging || !originalImage) return;
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const pos = getTouchPos(e);
+            const dx = pos.x - startX;
+            const dy = pos.y - startY;
+
+            updateCropBox(dx, dy);
+            drawImage();
+        }
+
+        function handleTouchEnd() {
+            if (isDragging) {
+                isDragging = false;
+                dragHandle = null;
+                showMessage(`Đã tùy chỉnh khung cắt. X: ${Math.round(cropBox.x)}, Y: ${Math.round(cropBox.y)}, W: ${Math.round(cropBox.width)}, H: ${Math.round(cropBox.height)}`, 'info');
+            }
+        }
+
+        function updateCropBox(dx, dy) {
+            const { x: cx, y: cy, width: cw, height: ch } = cropStart;
+            const canvasW = canvas.width;
+            const canvasH = canvas.height;
+            let newX = cx, newY = cy, newW = cw, newH = ch;
+
+            if (dragHandle === 'move') {
+                newX = Math.min(Math.max(0, cx + dx), canvasW - cw);
+                newY = Math.min(Math.max(0, cy + dy), canvasH - ch);
+            } else if (dragHandle) {
+                switch (dragHandle) {
+                    case 'tl':
+                        newX = Math.min(cx + dx, cx + cw - 50); 
+                        newY = Math.min(cy + dy, cy + ch - 50);
+                        newW = cw - (newX - cx);
+                        newH = ch - (newY - cy);
+                        break;
+                    case 'tr':
+                        newW = Math.max(50, cw + dx); 
+                        newY = Math.min(cy + dy, cy + ch - 50);
+                        newH = ch - (newY - cy);
+                        break;
+                    case 'bl':
+                        newX = Math.min(cx + dx, cx + cw - 50);
+                        newW = cw - (newX - cx);
+                        newH = Math.max(50, ch + dy);
+                        break;
+                    case 'br':
+                        newW = Math.max(50, cw + dx);
+                        newH = Math.max(50, ch + dy);
+                        break;
+                }
+            }
+
+            newX = Math.max(0, newX);
+            newY = Math.max(0, newY);
+            newW = Math.min(canvasW - newX, newW);
+            newH = Math.min(canvasH - newY, newH);
+
+            cropBox.x = newX;
+            cropBox.y = newY;
+            cropBox.width = newW;
+            cropBox.height = newH;
+        }
+
+        // --- EVENT LISTENERS KHỞI TẠO ---
+
+        function initCropBox(box = null) {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            if (box) {
+                cropBox.x = box.x;
+                cropBox.y = box.y;
+                cropBox.width = box.width;
+                cropBox.height
