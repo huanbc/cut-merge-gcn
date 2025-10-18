@@ -41,12 +41,15 @@
 
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
             <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải và Cắt Ảnh (Chỉ hỗ trợ JPG/PNG/WEBP)</h2>
-            <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" class="w-full text-sm file:text-transparent
+            
+            <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" style="display: none;" />
+            <button id="uploadButton" class="w-full text-sm file:text-transparent
                 file:mr-4 file:py-2 file:px-4 file:text-white
                 file:rounded-full file:border-0 file:cursor-pointer
                 file:text-sm file:font-bold file:shadow
-                file:bg-yellow-500 hover:file:bg-yellow-600 transition duration-150 ease-in-out"
-            />
+                bg-yellow-500 hover:bg-yellow-600 transition duration-150 ease-in-out font-bold py-3 px-4 rounded-xl shadow-md text-white">
+                Tải Ảnh Lên (Click vào đây)
+            </button>
             
             <div id="controls" class="mt-4" style="display:none;">
                 
@@ -136,6 +139,7 @@
 
         // Khai báo các biến toàn cục (CẮT ẢNH)
         const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton'); // NÚT MỚI
         const rotateButton = document.getElementById('rotateButton');
         const autoCropButton = document.getElementById('autoCropButton');
         const resetCropButton = document.getElementById('resetCropButton');
@@ -638,7 +642,12 @@
             }
         }
 
-        // Event tải file ảnh (Đã thêm Debug Logs)
+        // THAY ĐỔI: Event cho nút Upload mới, kích hoạt input file
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Event tải file ảnh (Nghe sự kiện change trên input file ẩn)
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
