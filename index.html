@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xử Lý Ảnh Giấy Chứng Nhận (Ghép 1-4 Phần)</title>
+    <title>Xử Lý Ảnh Giấy Chứng Nhận (Ghép 1-4 Phần) & Ghép PDF</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script> 
     <style>
         /* Đảm bảo canvas có thể mở rộng */
         #imageCanvas {
@@ -34,13 +35,13 @@
 
     <div class="container mx-auto p-4 md:p-8 max-w-5xl">
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Công Cụ Cắt Ghép Ảnh Giấy Chứng Nhận thành PDF</h1>
-            <p class="text-gray-500 mt-2"> AI Xử lý ảnh Giấy tờ ghép thành PDF A4 Chuẩn. Viết bởi Lê Minh Huấn - Chi nhánh VPĐKĐĐ  8/p>
+            <h1 class="text-3xl font-bold text-gray-800">Công Cụ Cắt Ghép Ảnh Giấy Chứng Nhận thành PDF & Ghép PDF</h1>
+            <p class="text-gray-500 mt-2">AI Xử lý ảnh Giấy tờ, ghép thành PDF A4 Chuẩn và công cụ ghép nhiều File PDF. Viết bởi Lê Minh Huấn</p>
         </header>
 
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải và Xử lý Ảnh</h2>
-            <input type="file" id="fileInput" accept="image/*" class="w-full text-sm file:text-transparent
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải và Cắt Ảnh (Hỗ trợ JPG/PNG/TIF)</h2>
+            <input type="file" id="fileInput" accept="image/*, .tif, .tiff" class="w-full text-sm file:text-transparent
                 file:mr-4 file:py-2 file:px-4 file:text-white
                 file:rounded-full file:border-0 file:cursor-pointer
                 file:text-sm file:font-bold file:shadow
@@ -86,8 +87,8 @@
             <p class="text-sm text-gray-400 mt-4 italic text-center">Sử dụng chuột hoặc ngón tay: **Kéo** để di chuyển khung cắt. **Kéo các góc** để thay đổi kích thước.</p>
         </div>
         
-        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Ghép Ảnh và Xuất PDF</h2>
+        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Ghép Ảnh đã cắt và Xuất PDF</h2>
             <div id="pdfStatus" class="flex flex-wrap gap-4 mb-4">
                 <div id="status1" class="flex-1 min-w-[200px] p-3 rounded-lg border border-red-300 bg-red-50 text-red-700">
                     Phần 1: Chưa Lưu
@@ -103,37 +104,37 @@
                 </div>
             </div>
             <button id="createPdfButton" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out disabled:opacity-50" disabled>
-                Tạo File PDF A4 (Ghép các Phần)
+                Tạo File PDF A4 từ các Phần Ảnh Đã Cắt
             </button>
+        </div>
+        
+        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mt-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Ghép nhiều File PDF thành 1</h2>
+            <p class="text-sm text-gray-500 mb-4">Chọn **tối thiểu 2** tệp tin PDF để ghép chúng thành một file duy nhất. Tính năng này KHÔNG liên quan đến các ảnh ở phần 1 & 2.</p>
+            <input type="file" id="pdfFileInput" accept="application/pdf" multiple class="w-full text-sm file:text-transparent
+                file:mr-4 file:py-2 file:px-4 file:text-white
+                file:rounded-full file:border-0 file:cursor-pointer
+                file:text-sm file:font-bold file:shadow
+                file:bg-red-500 hover:file:bg-red-600 transition duration-150 ease-in-out"
+            />
+            <button id="mergePdfButton" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out disabled:opacity-50 mt-4" disabled>
+                Ghép N (≥ 2) File PDF Đã Chọn
+            </button>
+            <div id="pdfMergeMessage" class="mt-4 p-3 text-sm text-blue-700 bg-blue-100 rounded-lg hidden" role="alert"></div>
         </div>
         
     </div>
 
     <script>
         // --- CHỐNG XEM MÃ NGUỒN (OBFUSCATION & INTERACTION PREVENTION) ---
-        // Vô hiệu hóa chuột phải
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            console.warn("%cCẢNH BÁO: MÃ NGUỒN CÓ THỂ CHỨA THÔNG TIN ĐỘC QUYỀN. VUI LÒNG KHÔNG SAO CHÉP. Created by huanbc.", "color: red; font-size: 16px; font-weight: bold;");
-        });
-
-        // Vô hiệu hóa phím F12 và Ctrl+Shift+I/J/C
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); console.warn("%cCẢNH BÁO: MÃ NGUỒN CÓ THỂ CHỨA THÔNG TIN ĐỘC QUYỀN. VUI LÒNG KHÔNG SAO CHÉP. Created by huanbc.", "color: red; font-size: 16px; font-weight: bold;"); });
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12') {
-                e.preventDefault();
-                console.warn("%cCẢNH BÁO: Đã vô hiệu hóa phím tắt Developer Tools (F12).", "color: red; font-size: 16px; font-weight: bold;");
-            }
-            if ((e.ctrlKey || e.metaKey) && (e.shiftKey) && (e.key === 'I' || e.key === 'J' || e.key === 'C')) {
-                e.preventDefault();
-                console.warn("%cCẢNH BÁO: Đã vô hiệu hóa phím tắt Developer Tools (Ctrl+Shift+I/J/C).", "color: red; font-size: 16px; font-weight: bold;");
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'U') {
-                e.preventDefault();
-                console.warn("%cCẢNH BÁO: Đã vô hiệu hóa phím tắt View Page Source (Ctrl+U).", "color: red; font-size: 16px; font-weight: bold;");
-            }
+            if (e.key === 'F12') { e.preventDefault(); console.warn("%cCẢNH BÁO: Đã vô hiệu hóa phím tắt Developer Tools (F12).", "color: red; font-size: 16px; font-weight: bold;"); }
+            if ((e.ctrlKey || e.metaKey) && (e.shiftKey) && (e.key === 'I' || e.key === 'J' || e.key === 'C')) { e.preventDefault(); console.warn("%cCẢNH BÁO: Đã vô hiệu hóa phím tắt Developer Tools (Ctrl+Shift+I/J/C).", "color: red; font-size: 16px; font-weight: bold;"); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'U') { e.preventDefault(); console.warn("%cCẢNH BÁO: Đã vô hiệu hóa phím tắt View Page Source (Ctrl+U).", "color: red; font-size: 16px; font-weight: bold;"); }
         });
 
-        // Khai báo các biến toàn cục
+        // Khai báo các biến toàn cục (CẮT ẢNH)
         const fileInput = document.getElementById('fileInput');
         const rotateButton = document.getElementById('rotateButton');
         const autoCropButton = document.getElementById('autoCropButton');
@@ -152,26 +153,27 @@
         const status3 = document.getElementById('status3');
         const status4 = document.getElementById('status4');
         
-        let originalImage = null;       // Đối tượng Image gốc đang được hiển thị
-        let rotationAngle = 0;          // Góc xoay hiện tại (0, 90, 180, 270)
-        
-        // Trạng thái lưu trữ ảnh đã cắt (tối đa 4 phần)
+        let originalImage = null;       
+        let rotationAngle = 0;          
         let croppedImage1 = null; 
         let croppedImage2 = null;  
         let croppedImage3 = null;  
         let croppedImage4 = null;  
 
-        // Khung cắt tương tác
         let cropBox = { x: 0, y: 0, width: 0, height: 0 };
-        const HANDLE_SIZE = 15; // Kích thước tay nắm góc
-
-        // Trạng thái kéo thả
+        const HANDLE_SIZE = 15; 
         let isDragging = false;
-        let dragHandle = null; // 'tl', 'tr', 'bl', 'br', 'move', null
-        let startX, startY; // Tọa độ chuột khi bắt đầu kéo
-        let cropStart;      // Vị trí cropBox khi bắt đầu kéo
+        let dragHandle = null; 
+        let startX, startY; 
+        let cropStart;      
 
-        // --- HÀM HỖ TRỢ CHUNG ---
+        // Khai báo các biến toàn cục (GHÉP PDF)
+        const pdfFileInput = document.getElementById('pdfFileInput');
+        const mergePdfButton = document.getElementById('mergePdfButton');
+        const pdfMergeMessage = document.getElementById('pdfMergeMessage'); 
+
+
+        // --- HÀM HỖ TRỢ CHUNG (CẮT ẢNH) ---
 
         function showMessage(message, type = 'info') {
             messageBox.textContent = message;
@@ -212,553 +214,10 @@
                 }
             });
             
-            // Chỉ cần ít nhất 1 ảnh đã lưu là có thể tạo PDF
             createPdfButton.disabled = !isReadyForPdf;
         }
-
-        // --- HÀM XỬ LÝ ẢNH & CANVAS ---
-
-        function drawImage() {
-            if (!originalImage) return;
-
-            // Xoá canvas cũ
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            const rotation = rotationAngle % 360;
-            const isRotated = rotation === 90 || rotation === 270;
-
-            // Tính toán kích thước mới của canvas sau khi xoay
-            const canvasWidth = isRotated ? originalImage.height : originalImage.width;
-            const canvasHeight = isRotated ? originalImage.width : originalImage.height;
-
-            // Thiết lập kích thước canvas thực tế
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-
-            // Bắt đầu quá trình transform (xoay)
-            ctx.save();
-            
-            // Di chuyển tâm xoay đến giữa canvas
-            ctx.translate(canvasWidth / 2, canvasHeight / 2);
-            ctx.rotate(rotation * Math.PI / 180);
-            
-            // Vẽ ảnh gốc vào vị trí đã xoay
-            ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
-            
-            // Phục hồi lại trạng thái canvas
-            ctx.restore();
-
-            // Hiển thị khung cắt
-            drawCropOverlay(canvasWidth, canvasHeight);
-        }
-
-        function drawCropOverlay(currentCanvasWidth, currentCanvasHeight) {
-            const { x, y, width, height } = cropBox;
-
-            // 1. Vẽ vùng tối xung quanh (phần bị loại bỏ)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-            
-            // Trên (Top)
-            ctx.fillRect(0, 0, currentCanvasWidth, y);
-            // Dưới (Bottom)
-            ctx.fillRect(0, y + height, currentCanvasWidth, currentCanvasHeight - (y + height));
-            // Trái (Left)
-            ctx.fillRect(0, y, x, height);
-            // Phải (Right)
-            ctx.fillRect(x + width, y, currentCanvasWidth - (x + width), height);
-
-
-            // 2. Vẽ khung nét đứt (vùng được cắt)
-            ctx.strokeStyle = '#22C55E'; // Màu xanh lá
-            ctx.lineWidth = 3;
-            ctx.setLineDash([10, 5]); 
-            ctx.strokeRect(x, y, width, height);
-            ctx.setLineDash([]); 
-
-            // 3. Vẽ các điểm nắm (Handles)
-            ctx.fillStyle = '#22C55E';
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2;
-
-            // Vị trí các góc
-            const handles = [
-                { x: x, y: y, cursor: 'nwse-resize' },                   // Top-Left (tl)
-                { x: x + width, y: y, cursor: 'nesw-resize' },           // Top-Right (tr)
-                { x: x, y: y + height, cursor: 'nesw-resize' },          // Bottom-Left (bl)
-                { x: x + width, y: y + height, cursor: 'nwse-resize' }   // Bottom-Right (br)
-            ];
-
-            handles.forEach(h => {
-                ctx.beginPath();
-                ctx.arc(h.x, h.y, HANDLE_SIZE / 2, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.stroke();
-            });
-        }
         
-        /**
-         * Hàm thực hiện cắt ảnh theo khung cropBox hiện tại
-         */
-        function cropImage() {
-            if (!originalImage || cropBox.width <= 0 || cropBox.height <= 0) return null;
-
-            // 1. Xác định vùng cắt 
-            const sourceX = cropBox.x;
-            const sourceY = cropBox.y;
-            const cropWidth = cropBox.width;
-            const cropHeight = cropBox.height;
-            
-            // 2. Tạo canvas tạm để xoay ảnh gốc (nếu cần)
-            const rotation = rotationAngle % 360;
-            const isRotated = rotation === 90 || rotation === 270;
-            const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
-            const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
-
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = rotatedWidth;
-            tempCanvas.height = rotatedHeight;
-
-            tempCtx.save();
-            tempCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
-            tempCtx.rotate(rotation * Math.PI / 180);
-            tempCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
-            tempCtx.restore();
-
-            // 3. Tạo canvas cuối cùng với kích thước bằng vùng cắt đã chọn
-            const finalCanvas = document.createElement('canvas');
-            const finalCtx = finalCanvas.getContext('2d');
-            finalCanvas.width = cropWidth;
-            finalCanvas.height = cropHeight;
-
-            // 4. Lấy dữ liệu ảnh đã xoay từ tempCanvas và cắt (crop)
-            try {
-                const imageData = tempCtx.getImageData(sourceX, sourceY, cropWidth, cropHeight);
-                finalCtx.putImageData(imageData, 0, 0);
-            } catch (error) {
-                console.error("Lỗi khi lấy/đặt dữ liệu ảnh:", error);
-                return null;
-            }
-
-            // 5. Trả về DataURL
-            return finalCanvas.toDataURL('image/jpeg', 0.95);
-        }
-        
-        /**
-         * Tạo file PDF A4 chứa các ảnh Giấy Chứng Nhận đã cắt (1-4 phần).
-         */
-        function createPdfFromMultipleImages() {
-            const imagesData = [croppedImage1, croppedImage2, croppedImage3, croppedImage4];
-            const images = imagesData.filter(img => img !== null);
-            
-            if (images.length === 0) {
-                showMessage('Vui lòng cắt và lưu ít nhất một Phần ảnh trước khi tạo PDF.', 'error');
-                return;
-            }
-            
-            try {
-                // Khởi tạo jsPDF với kích thước A4 (Portrait - Dọc, đơn vị mm)
-                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                
-                const a4Width = 210;
-                const a4Height = 297; 
-                const margin = 10;
-                const usableWidth = a4Width - 2 * margin; // 190 mm
-                let currentY = margin;
-                const spacing = 10; // Khoảng cách giữa các ảnh
-                
-                // Lặp qua từng ảnh đã cắt
-                images.forEach((imgDataUrl, index) => {
-                    // Cần tạo một đối tượng Image tạm thời để lấy kích thước pixel
-                    // do addImage không tự tính được kích thước khi chỉ dùng DataURL
-                    const img = document.createElement('img');
-                    img.src = imgDataUrl;
-                    
-                    // Lấy kích thước pixel của ảnh đã cắt. Phải dùng async/onload trong thực tế 
-                    // nhưng trong ngữ cảnh này, jsPDF thường xử lý tốt synchronous load
-                    const imgWidthPx = img.width || 1000; // Dùng giá trị mặc định nếu chưa kịp load
-                    const imgHeightPx = img.height || 600; 
-                    
-                    const aspectRatio = imgWidthPx / imgHeightPx;
-                    
-                    // Scale ảnh để vừa với chiều rộng tối đa (usableWidth)
-                    const imageWidthMM = usableWidth; // 190 mm
-                    const imageHeightMM = imageWidthMM / aspectRatio;
-
-                    // Kiểm tra xem ảnh có vừa với không gian còn lại không (ngăn tràn trang)
-                    if (currentY + imageHeightMM > a4Height - margin) {
-                        doc.addPage(); // Thêm trang mới nếu không đủ chỗ
-                        currentY = margin;
-                    }
-                    
-                    // Vẽ ảnh lên PDF
-                    doc.addImage(imgDataUrl, 'JPEG', margin, currentY, imageWidthMM, imageHeightMM);
-                    
-                    // Cập nhật vị trí Y cho ảnh tiếp theo
-                    currentY += imageHeightMM + spacing;
-                });
-
-                // --- THÊM CHỮ KÝ Ở GÓC DƯỚI trang cuối ---
-                const signatureText = "][";
-                
-                doc.setFont('Times', 'normal'); 
-                doc.setFontSize(9); 
-                const signatureMargin = 10;
-                const signatureX = a4Width - signatureMargin; 
-                const signatureY = a4Height - signatureMargin; 
-
-                // Lấy trang cuối cùng và thêm chữ ký
-                doc.setPage(doc.internal.pages.length);
-                doc.text(signatureText, signatureX, signatureY, { align: 'right' });
-
-
-                // TẠO VÀ TẢI XUỐNG PDF 
-                const pdfBlob = doc.output('blob');
-                const url = URL.createObjectURL(pdfBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `GCN_CatGhep_${Date.now()}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url); // Giải phóng URL tạm thời
-
-                showMessage(`Đã tạo file PDF A4 thành công! Gồm ${images.length} phần ảnh đã cắt.`, 'success');
-
-            } catch (error) {
-                // Báo lỗi cho người dùng và log ra console
-                console.error("LỖI KHI XUẤT PDF:", error);
-                showMessage(`LỖI: Không thể tạo file PDF. Chi tiết lỗi: ${error.message}. Vui lòng kiểm tra console (F12) hoặc thử lại với ảnh nhỏ hơn.`, 'error');
-            }
-        }
-
-        // --- HÀM XỬ LÝ TƯƠNG TÁC (KÉO THẢ) ---
-        
-        // Trả về tay nắm (handle) nào đang được click
-        function getHandleAt(x, y) {
-            const { x: cx, y: cy, width: cw, height: ch } = cropBox;
-            const h = HANDLE_SIZE / 2;
-
-            const handles = {
-                'tl': { x: cx, y: cy },
-                'tr': { x: cx + cw, y: cy },
-                'bl': { x: cx, y: cy + ch },
-                'br': { x: cx + cw, y: cy + ch },
-            };
-
-            for (const key in handles) {
-                const handle = handles[key];
-                if (x >= handle.x - h && x <= handle.x + h && y >= handle.y - h && y <= handle.y + h) {
-                    return key;
-                }
-            }
-
-            // Kiểm tra xem có click bên trong khung cắt không (để di chuyển)
-            if (x >= cx + h && x <= cx + cw - h && y >= cy + h && y <= cy + ch - h) {
-                return 'move';
-            }
-
-            return null;
-        }
-
-        function getMousePos(evt) {
-            const rect = canvas.getBoundingClientRect();
-            // Tỷ lệ scale giữa kích thước hiển thị và kích thước Canvas thực tế
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-
-            return {
-                x: (evt.clientX - rect.left) * scaleX,
-                y: (evt.clientY - rect.top) * scaleY
-            };
-        }
-
-        function handleMouseDown(e) {
-            if (!originalImage) return;
-
-            const pos = getMousePos(e);
-            dragHandle = getHandleAt(pos.x, pos.y);
-
-            if (dragHandle) {
-                e.preventDefault();
-                e.stopPropagation();
-                isDragging = true;
-                startX = pos.x;
-                startY = pos.y;
-                cropStart = { ...cropBox }; // Sao chép trạng thái ban đầu
-            }
-        }
-
-        function handleMouseMove(e) {
-            if (!isDragging || !originalImage) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const pos = getMousePos(e);
-            const dx = pos.x - startX;
-            const dy = pos.y - startY;
-            
-            updateCropBox(dx, dy);
-            drawImage();
-        }
-
-        function handleMouseUp() {
-            if (isDragging) {
-                isDragging = false;
-                dragHandle = null;
-                showMessage(`Đã tùy chỉnh khung cắt. X: ${Math.round(cropBox.x)}, Y: ${Math.round(cropBox.y)}, W: ${Math.round(cropBox.width)}, H: ${Math.round(cropBox.height)}`, 'info');
-            }
-        }
-
-        function getTouchPos(evt) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const touch = evt.touches[0];
-            return {
-                x: (touch.clientX - rect.left) * scaleX,
-                y: (touch.clientY - rect.top) * scaleY
-            };
-        }
-
-        function handleTouchStart(e) {
-            if (!originalImage) return;
-            const pos = getTouchPos(e);
-            dragHandle = getHandleAt(pos.x, pos.y);
-            if (dragHandle) {
-                e.preventDefault();
-                e.stopPropagation();
-                isDragging = true;
-                startX = pos.x;
-                startY = pos.y;
-                cropStart = { ...cropBox };
-            }
-        }
-
-        function handleTouchMove(e) {
-            if (!isDragging || !originalImage) return;
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const pos = getTouchPos(e);
-            const dx = pos.x - startX;
-            const dy = pos.y - startY;
-
-            updateCropBox(dx, dy);
-            drawImage();
-        }
-
-        function handleTouchEnd() {
-            if (isDragging) {
-                isDragging = false;
-                dragHandle = null;
-                showMessage(`Đã tùy chỉnh khung cắt. X: ${Math.round(cropBox.x)}, Y: ${Math.round(cropBox.y)}, W: ${Math.round(cropBox.width)}, H: ${Math.round(cropBox.height)}`, 'info');
-            }
-        }
-
-        function updateCropBox(dx, dy) {
-            const { x: cx, y: cy, width: cw, height: ch } = cropStart;
-            const canvasW = canvas.width;
-            const canvasH = canvas.height;
-            let newX = cx, newY = cy, newW = cw, newH = ch;
-
-            if (dragHandle === 'move') {
-                newX = Math.min(Math.max(0, cx + dx), canvasW - cw);
-                newY = Math.min(Math.max(0, cy + dy), canvasH - ch);
-            } else if (dragHandle) {
-                switch (dragHandle) {
-                    case 'tl':
-                        newX = Math.min(cx + dx, cx + cw - 50); 
-                        newY = Math.min(cy + dy, cy + ch - 50);
-                        newW = cw - (newX - cx);
-                        newH = ch - (newY - cy);
-                        break;
-                    case 'tr':
-                        newW = Math.max(50, cw + dx); 
-                        newY = Math.min(cy + dy, cy + ch - 50);
-                        newH = ch - (newY - cy);
-                        break;
-                    case 'bl':
-                        newX = Math.min(cx + dx, cx + cw - 50);
-                        newW = cw - (newX - cx);
-                        newH = Math.max(50, ch + dy);
-                        break;
-                    case 'br':
-                        newW = Math.max(50, cw + dx);
-                        newH = Math.max(50, ch + dy);
-                        break;
-                }
-            }
-
-            newX = Math.max(0, newX);
-            newY = Math.max(0, newY);
-            newW = Math.min(canvasW - newX, newW);
-            newH = Math.min(canvasH - newY, newH);
-
-            cropBox.x = newX;
-            cropBox.y = newY;
-            cropBox.width = newW;
-            cropBox.height = newH;
-        }
-
-        // --- EVENT LISTENERS KHỞI TẠO ---
-
-        function initCropBox(box = null) {
-            const w = canvas.width;
-            const h = canvas.height;
-
-            if (box) {
-                cropBox.x = box.x;
-                cropBox.y = box.y;
-                cropBox.width = box.width;
-                cropBox.height = box.height;
-            } else {
-                // Mặc định là toàn bộ ảnh
-                cropBox.x = 0;
-                cropBox.y = 0;
-                cropBox.width = w;
-                cropBox.height = h;
-            }
-        }
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                originalImage = new Image();
-                originalImage.onload = () => {
-                    // Reset trạng thái khi tải ảnh mới
-                    rotationAngle = 0; 
-                    controls.style.display = 'block'; 
-                    drawImage();
-                    // Khung cắt mặc định là toàn bộ ảnh
-                    initCropBox();
-                    drawImage();
-                    showMessage(`Ảnh đã được tải. Sử dụng chuột để kéo thả khung cắt.`, 'info');
-                    // Cuộn tới vùng canvas
-                    canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                };
-                originalImage.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        rotateButton.addEventListener('click', () => {
-            if (!originalImage) {
-                showMessage('Vui lòng tải ảnh lên trước.', 'error');
-                return;
-            }
-            rotationAngle = (rotationAngle + 90) % 360;
-            drawImage();
-            // Sau khi xoay, kích thước canvas thay đổi, cần khởi tạo lại khung cắt
-            initCropBox(); 
-            drawImage();
-            showMessage(`Đã xoay ảnh 90°. Góc xoay hiện tại: ${rotationAngle}°`, 'info');
-        });
-        
-        autoCropButton.addEventListener('click', () => {
-            if (!originalImage) {
-                showMessage('Vui lòng tải ảnh lên trước.', 'error');
-                return;
-            }
-            
-            // Lấy kích thước canvas sau khi xoay
-            const canvasW = canvas.width;
-            const canvasH = canvas.height;
-            
-            // Đặt kích thước khung cắt 90% kích thước ảnh và căn giữa
-            const newCropWidth = canvasW * 0.9;
-            const newCropHeight = canvasH * 0.9;
-
-            // Tính toán tọa độ để đặt khung cắt vào giữa ảnh
-            const newX = (canvasW - newCropWidth) / 2;
-            const newY = (canvasH - newCropHeight) / 2;
-
-            const newCropBox = {
-                x: newX,
-                y: newY,
-                width: newCropWidth,
-                height: newCropHeight
-            };
-
-            // Cập nhật khung cắt và vẽ lại ảnh
-            initCropBox(newCropBox);
-            drawImage();
-
-            showMessage('Đã đặt khung cắt mặc định 90% kích thước ảnh. Bạn có thể kéo thả để tinh chỉnh.', 'success');
-        });
-
-        resetCropButton.addEventListener('click', () => {
-            if (!originalImage) return;
-            initCropBox();
-            drawImage();
-            showMessage('Khung cắt đã được đặt lại là toàn bộ ảnh. Bạn có thể kéo thả để vẽ khung mới.', 'info');
-        });
-
-        // --- CÁC HÀM LƯU PHẦN 1 ĐẾN PHẦN 4 ---
-        savePart1Button.addEventListener('click', () => {
-            const resultDataUrl = cropImage();
-            if (resultDataUrl) {
-                croppedImage1 = resultDataUrl;
-                updateStatus();
-                showMessage('Đã Cắt và Lưu ảnh Phần 1!', 'success');
-            } else {
-                showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error');
-            }
-        });
-
-        savePart2Button.addEventListener('click', () => {
-            const resultDataUrl = cropImage();
-            if (resultDataUrl) {
-                croppedImage2 = resultDataUrl;
-                updateStatus();
-                showMessage('Đã Cắt và Lưu ảnh Phần 2!', 'success');
-            } else {
-                showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error');
-            }
-        });
-        
-        savePart3Button.addEventListener('click', () => {
-            const resultDataUrl = cropImage();
-            if (resultDataUrl) {
-                croppedImage3 = resultDataUrl;
-                updateStatus();
-                showMessage('Đã Cắt và Lưu ảnh Phần 3!', 'success');
-            } else {
-                showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error');
-            }
-        });
-
-        savePart4Button.addEventListener('click', () => {
-            const resultDataUrl = cropImage();
-            if (resultDataUrl) {
-                croppedImage4 = resultDataUrl;
-                updateStatus();
-                showMessage('Đã Cắt và Lưu ảnh Phần 4!', 'success');
-            } else {
-                showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error');
-            }
-        });
-        
-        createPdfButton.addEventListener('click', createPdfFromMultipleImages);
-
-        // Đăng ký sự kiện chuột cho tương tác kéo thả
-        canvas.addEventListener('mousedown', handleMouseDown);
-        canvas.addEventListener('mousemove', handleMouseMove);
-        canvas.addEventListener('mouseup', handleMouseUp);
-        
-        // Đăng ký sự kiện chạm cho tương tác kéo thả trên mobile
-        canvas.addEventListener('touchstart', handleTouchStart);
-        canvas.addEventListener('touchmove', handleTouchMove);
-        canvas.addEventListener('touch-end', handleTouchEnd);
-
-
-        // Khởi tạo trạng thái ban đầu
-        updateStatus(); 
-    </script>
-</body>
-
-</html>
+        // --- HÀM HỖ TRỢ CHUNG (GHÉP PDF) ---
+        function showMergeMessage(message, type = 'info') {
+            pdfMergeMessage.textContent = message;
+            pdfMergeMessage.className =
