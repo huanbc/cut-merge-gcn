@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xử Lý Ảnh Giấy Chứng Nhận (Ghép 1-4 Phần) & Ghép PDF</title>
+    <title>Xử Lý Ảnh Giấy Chứng Nhận & CCCD (Ghép PDF A4 Ngang)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script> 
@@ -35,8 +35,8 @@
 
     <div class="container mx-auto p-4 md:p-8 max-w-5xl">
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Công Cụ Cắt Ghép Ảnh Giấy Chứng Nhận thành PDF & Ghép PDF</h1>
-            <p class="text-gray-500 mt-2">AI Xử lý ảnh Giấy tờ, ghép thành PDF A4 Chuẩn và công cụ ghép nhiều File PDF. Viết bởi Lê Minh Huấn</p>
+            <h1 class="text-3xl font-bold text-gray-800">Công Cụ Cắt Ghép Ảnh Giấy Chứng Nhận & CCCD thành PDF A4 Ngang</h1>
+            <p class="text-gray-500 mt-2">AI Xử lý ảnh, ghép thành PDF A4 Chuẩn. Tác giả: Lê Minh Huấn CN VPĐKĐĐ 8 -SĐT: 0912041201 </p>
         </header>
 
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
@@ -91,7 +91,7 @@
         </div>
         
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Ghép Ảnh đã cắt và Xuất PDF</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Ghép Ảnh đã cắt và Xuất PDF A4 Ngang</h2>
             <div id="pdfStatus" class="flex flex-wrap gap-4 mb-4">
                 <div id="status1" class="flex-1 min-w-[200px] p-3 rounded-lg border border-red-300 bg-red-50 text-red-700">
                     Phần 1: Chưa Lưu
@@ -106,8 +106,13 @@
                     Phần 4: Chưa Lưu
                 </div>
             </div>
-            <button id="createPdfButton" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out disabled:opacity-50" disabled>
-                Tạo File PDF A4 từ các Phần Ảnh Đã Cắt
+            
+            <button id="createGcnPdfButton" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out disabled:opacity-50 mb-4" disabled>
+                Tạo File PDF A4 Ngang **GCN** (Mỗi Phần/1 Trang)
+            </button>
+            
+            <button id="createCccdPdfButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out disabled:opacity-50" disabled>
+                Tạo File PDF A4 Ngang **CCCD** (Ghép 2 Mặt/1 Trang Chuẩn)
             </button>
         </div>
         
@@ -139,7 +144,7 @@
 
         // Khai báo các biến toàn cục (CẮT ẢNH)
         const fileInput = document.getElementById('fileInput');
-        const uploadButton = document.getElementById('uploadButton'); // NÚT MỚI
+        const uploadButton = document.getElementById('uploadButton'); 
         const rotateButton = document.getElementById('rotateButton');
         const autoCropButton = document.getElementById('autoCropButton');
         const resetCropButton = document.getElementById('resetCropButton');
@@ -147,7 +152,10 @@
         const savePart2Button = document.getElementById('savePart2Button');
         const savePart3Button = document.getElementById('savePart3Button');
         const savePart4Button = document.getElementById('savePart4Button');
-        const createPdfButton = document.getElementById('createPdfButton');
+        // Thay thế createPdfButton bằng 2 nút mới
+        const createGcnPdfButton = document.getElementById('createGcnPdfButton');
+        const createCccdPdfButton = document.getElementById('createCccdPdfButton');
+        
         const controls = document.getElementById('controls');
         const canvas = document.getElementById('imageCanvas');
         const ctx = canvas.getContext('2d');
@@ -205,20 +213,27 @@
                 { index: 3, element: status3, image: croppedImage3 },
                 { index: 4, element: status4, image: croppedImage4 },
             ];
-            let isReadyForPdf = false;
+            let gcnReady = false;
+            let cccdReady = false;
 
             statuses.forEach(s => {
                 if (s.image) {
                     s.element.textContent = `Phần ${s.index}: Đã Lưu`;
                     s.element.className = 'flex-1 min-w-[200px] p-3 rounded-lg border border-green-300 bg-green-50 text-green-700';
-                    isReadyForPdf = true;
+                    gcnReady = true; // Chỉ cần 1 phần là GCN đã sẵn sàng
                 } else {
                     s.element.textContent = `Phần ${s.index}: Chưa Lưu`;
                     s.element.className = 'flex-1 min-w-[200px] p-3 rounded-lg border border-red-300 bg-red-50 text-red-700';
                 }
             });
             
-            createPdfButton.disabled = !isReadyForPdf;
+            // CCCD chỉ sẵn sàng nếu Phần 1 VÀ Phần 2 đã được lưu
+            if (croppedImage1 && croppedImage2) {
+                cccdReady = true;
+            }
+
+            createGcnPdfButton.disabled = !gcnReady;
+            createCccdPdfButton.disabled = !cccdReady;
         }
         
         // --- HÀM HỖ TRỢ CHUNG (GHÉP PDF) ---
@@ -341,7 +356,10 @@
             return finalCanvas.toDataURL('image/jpeg', 0.95);
         }
         
-        function createPdfFromMultipleImages() {
+        /**
+         * Chế độ GCN: Xuất mỗi ảnh đã cắt ra một trang PDF A4 Ngang riêng biệt, co giãn để vừa chiều rộng.
+         */
+        function createGcnPdfFromMultipleImages() {
             const imagesData = [croppedImage1, croppedImage2, croppedImage3, croppedImage4];
             const images = imagesData.filter(img => img !== null);
             
@@ -351,16 +369,21 @@
             }
             
             try {
-                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                // Khởi tạo jsPDF với kích thước A4 (Landscape - Ngang, đơn vị mm)
+                const doc = new window.jspdf.jsPDF('l', 'mm', 'a4');
                 
-                const a4Width = 210;
-                const a4Height = 297; 
+                const a4Width = 297; // Chiều rộng A4 Ngang
+                const a4Height = 210; // Chiều cao A4 Ngang
                 const margin = 10;
                 const usableWidth = a4Width - 2 * margin; 
-                let currentY = margin;
-                const spacing = 10; 
                 
+                // Lặp qua từng ảnh đã cắt
                 images.forEach((imgDataUrl, index) => {
+                    // Thêm trang mới TỪ trang thứ hai trở đi
+                    if (index > 0) {
+                        doc.addPage();
+                    }
+                    
                     const img = document.createElement('img');
                     img.src = imgDataUrl;
                     
@@ -372,14 +395,10 @@
                     const imageWidthMM = usableWidth; 
                     const imageHeightMM = imageWidthMM / aspectRatio;
 
-                    if (currentY + imageHeightMM > a4Height - margin) {
-                        doc.addPage(); 
-                        currentY = margin;
-                    }
-                    
-                    doc.addImage(imgDataUrl, 'JPEG', margin, currentY, imageWidthMM, imageHeightMM);
-                    
-                    currentY += imageHeightMM + spacing;
+                    // Căn giữa theo chiều cao
+                    const startY = (a4Height - imageHeightMM) / 2;
+
+                    doc.addImage(imgDataUrl, 'JPEG', margin, startY, imageWidthMM, imageHeightMM);
                 });
 
                 const signatureText = "][";
@@ -397,20 +416,82 @@
                 const url = URL.createObjectURL(pdfBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `GCN_CatGhep_${Date.now()}.pdf`;
+                a.download = `GCN_MoiPhan1Trang_A4Ngang_${Date.now()}.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url); 
 
-                showMessage(`Đã tạo file PDF A4 thành công! Gồm ${images.length} phần ảnh đã cắt.`, 'success');
+                showMessage(`Đã tạo file PDF A4 Ngang thành công! Gồm ${images.length} trang.`, 'success');
 
             } catch (error) {
-                console.error("LỖI KHI XUẤT PDF:", error);
-                showMessage(`LỖI: Không thể tạo file PDF. Chi tiết lỗi: ${error.message}. Vui lòng kiểm tra console (F12) hoặc thử lại với ảnh nhỏ hơn.`, 'error');
+                console.error("LỖI KHI XUẤT PDF GCN:", error);
+                showMessage(`LỖI: Không thể tạo file PDF GCN. Chi tiết lỗi: ${error.message}. Vui lòng kiểm tra console (F12) hoặc thử lại.`, 'error');
             }
         }
-        
+
+        /**
+         * Chế độ CCCD: Ghép ảnh Phần 1 & Phần 2 vào 1 trang PDF A4 Ngang với kích thước chuẩn.
+         */
+        function createCccdPdfFromTwoImages() {
+            if (!croppedImage1 || !croppedImage2) {
+                showMessage('Vui lòng cắt và lưu cả Phần 1 và Phần 2 để ghép CCCD (2 Mặt).', 'error');
+                return;
+            }
+            
+            try {
+                // Khởi tạo jsPDF với kích thước A4 (Landscape - Ngang, đơn vị mm)
+                const doc = new window.jspdf.jsPDF('l', 'mm', 'a4');
+                
+                const a4Width = 297; // Chiều rộng A4 Ngang
+                const a4Height = 210; // Chiều cao A4 Ngang
+                // Kích thước CCCD chuẩn (mm): 87 x 58
+                const cardWidthMM = 87;
+                const cardHeightMM = 58;
+
+                // Tính toán vị trí ảnh (Căn giữa ngang)
+                const marginX = (a4Width - cardWidthMM) / 2; // 105 mm
+                const startY = 30; // Vị trí ảnh đầu tiên (từ trên xuống)
+                const spacing = 15; // Khoảng cách giữa 2 ảnh
+                const nextY = startY + cardHeightMM + spacing; // 103 mm
+                
+                // 1. Vẽ Mặt TRƯỚC (Phần 1)
+                doc.addImage(croppedImage1, 'JPEG', marginX, startY, cardWidthMM, cardHeightMM);
+                
+                // 2. Vẽ Mặt SAU (Phần 2)
+                doc.addImage(croppedImage2, 'JPEG', marginX, nextY, cardWidthMM, cardHeightMM);
+
+                // --- THÊM CHỮ KÝ Ở GÓC DƯỚI ---
+                const signatureText = "][";
+                
+                doc.setFont('Times', 'normal'); 
+                doc.setFontSize(9); 
+                const signatureMargin = 10;
+                const signatureX = a4Width - signatureMargin; 
+                const signatureY = a4Height - signatureMargin; 
+
+                doc.text(signatureText, signatureX, signatureY, { align: 'right' });
+
+
+                // TẠO VÀ TẢI XUỐNG PDF
+                const pdfBlob = doc.output('blob');
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `CCCD_2Mat_A4Ngang_Chuan_${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url); 
+
+                showMessage('Đã tạo file PDF A4 Ngang CCCD (2 Mặt/1 Trang Chuẩn) thành công!', 'success');
+
+            } catch (error) {
+                console.error("LỖI KHI XUẤT PDF CCCD:", error);
+                showMessage(`LỖI: Không thể tạo file PDF CCCD. Chi tiết lỗi: ${error.message}. Vui lòng kiểm tra console (F12) hoặc thử lại.`, 'error');
+            }
+        }
+
         // --- LOGIC GHÉP PDF ---
 
         async function mergePdfs() {
@@ -466,7 +547,7 @@
             }
         }
 
-        // --- HÀM XỬ LÝ TƯƠNG TÁC (KÉO THẢ) ---
+        // --- HÀM XỬ LÝ TƯƠNG TÁC (KÉO THẢ) (Giữ nguyên) ---
         
         function getHandleAt(x, y) {
             const { x: cx, y: cy, width: cw, height: ch } = cropBox;
@@ -642,32 +723,26 @@
             }
         }
 
-        // THAY ĐỔI: Event cho nút Upload mới, kích hoạt input file
+        // Kích hoạt input file khi nhấn nút Upload
         uploadButton.addEventListener('click', () => {
             fileInput.click();
         });
 
-        // Event tải file ảnh (Nghe sự kiện change trên input file ẩn)
+        // Event tải file ảnh 
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            console.log(`[DEBUG] Tải file: ${file.name}, Kích thước: ${file.size} bytes. MIME Type: ${file.type}`);
-            
             const reader = new FileReader();
             
-            // Xử lý khi FileReader không thể đọc tệp
             reader.onerror = (err) => {
                  console.error("[ERROR] Lỗi khi đọc tệp bằng FileReader:", err);
                  showMessage(`Lỗi hệ thống: Không thể đọc tệp (${file.name}). Vui lòng kiểm tra Console (F12) để biết chi tiết.`, 'error');
             }
 
-            // Hàm xử lý khi FileReader đã đọc xong tệp (có DataURL)
             reader.onload = (event) => {
-                console.log("[DEBUG] FileReader đã đọc xong tệp. Bắt đầu tạo đối tượng Image.");
                 originalImage = new Image();
                 
-                // *** LOGIC XỬ LÝ LỖI KHI GÁN SRC ***
                 originalImage.onerror = (err) => {
                      console.error("[ERROR] Lỗi khi gán DataURL vào Image (Image.onerror fired). Image không hợp lệ hoặc quá lớn.", err);
                      showMessage(`Lỗi: Không thể hiển thị tệp tin (${file.name}). Tệp ảnh có thể bị lỗi, không phải định dạng JPG/PNG chuẩn, hoặc quá lớn. Vui lòng kiểm tra Console (F12).`, 'error');
@@ -676,13 +751,9 @@
                      ctx.clearRect(0, 0, canvas.width, canvas.height);
                 }
 
-                // *** LOGIC TẢI THÀNH CÔNG ***
                 originalImage.onload = () => {
-                    console.log("[DEBUG] Image đã tải thành công! Bắt đầu vẽ ảnh và hiển thị công cụ.");
-                    // Reset trạng thái khi tải ảnh mới
                     rotationAngle = 0; 
                     
-                    // HIỂN THỊ CÔNG CỤ
                     controls.style.display = 'block'; 
                     
                     drawImage(); 
@@ -690,16 +761,12 @@
                     drawImage(); 
                     showMessage(`Ảnh đã được tải (${file.name}). Sử dụng chuột để kéo thả khung cắt.`, 'success');
                     
-                    // Cuộn tới vùng canvas
                     canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 };
                 
-                // Đảm bảo gán onload/onerror trước khi đặt src
                 originalImage.src = event.target.result;
-                console.log("[DEBUG] Đã gán SRC cho Image. Đang chờ Image.onload/onerror...");
             };
             
-            // Đọc tệp tin thành DataURL
             reader.readAsDataURL(file);
         });
 
@@ -757,8 +824,9 @@
             if (resultDataUrl) { croppedImage4 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 4!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error'); }
         });
         
-        // Event tạo PDF từ ảnh đã cắt
-        createPdfButton.addEventListener('click', createPdfFromMultipleImages);
+        // --- EVENT LISTENERS CHO TẠO PDF ---
+        createGcnPdfButton.addEventListener('click', createGcnPdfFromMultipleImages);
+        createCccdPdfButton.addEventListener('click', createCccdPdfFromTwoImages);
 
         // --- EVENT LISTENERS CHO TÍNH NĂNG GHÉP PDF ---
         pdfFileInput.addEventListener('change', () => {
@@ -772,7 +840,6 @@
             }
         });
         
-        // Event kích hoạt hàm ghép PDF
         mergePdfButton.addEventListener('click', mergePdfs);
 
         // Đăng ký sự kiện chuột và chạm cho tương tác kéo thả (CẮT ẢNH)
