@@ -60,6 +60,12 @@
                     <button id="rotateButton" class="flex-1 min-w-[100px] bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
                         Xoay 90°
                     </button>
+                    <button id="sharpenButton" class="flex-1 min-w-[100px] bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                        Làm Nét Ảnh
+                    </button>
+                    <button id="deskewButton" class="flex-1 min-w-[100px] bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
+                        Làm Phẳng Ảnh (Beta)
+                    </button>
                     <button id="resetCropButton" class="flex-1 min-w-[100px] bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
                         Cắt Toàn Bộ Ảnh
                     </button>
@@ -148,6 +154,8 @@
         const rotateButton = document.getElementById('rotateButton');
         const autoCropButton = document.getElementById('autoCropButton');
         const resetCropButton = document.getElementById('resetCropButton');
+        const sharpenButton = document.getElementById('sharpenButton'); // THÊM
+        const deskewButton = document.getElementById('deskewButton');   // THÊM
         const savePart1Button = document.getElementById('savePart1Button');
         const savePart2Button = document.getElementById('savePart2Button');
         const savePart3Button = document.getElementById('savePart3Button');
@@ -354,6 +362,102 @@
             }
 
             return finalCanvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        // --- HÀM LÀM NÉT ẢNH (SHARPEN) ---
+        
+        // Hàm tiện ích: Áp dụng bộ lọc Convolution
+        function applyConvolutionFilter(pixels, weights) {
+            const side = Math.round(Math.sqrt(weights.length));
+            const halfSide = Math.floor(side / 2);
+            const src = pixels.data;
+            const sw = pixels.width;
+            const sh = pixels.height;
+            const output = ctx.createImageData(sw, sh);
+            const dst = output.data;
+            const alphaFac = 1;
+
+            // Lặp qua từng pixel (không tính viền)
+            for (let y = halfSide; y < sh - halfSide; y++) {
+                for (let x = halfSide; x < sw - halfSide; x++) {
+                    const dstIndex = (y * sw + x) * 4;
+                    let r = 0, g = 0, b = 0;
+
+                    for (let cy = 0; cy < side; cy++) {
+                        for (let cx = 0; cx < side; cx++) {
+                            const scx = x + cx - halfSide;
+                            const scy = y + cy - halfSide;
+                            const srcIndex = (scy * sw + scx) * 4;
+                            
+                            const weight = weights[cy * side + cx];
+                            
+                            r += src[srcIndex] * weight;
+                            g += src[srcIndex + 1] * weight;
+                            b += src[srcIndex + 2] * weight;
+                        }
+                    }
+
+                    dst[dstIndex] = Math.min(255, Math.max(0, r));
+                    dst[dstIndex + 1] = Math.min(255, Math.max(0, g));
+                    dst[dstIndex + 2] = Math.min(255, Math.max(0, b));
+                    dst[dstIndex + 3] = src[dstIndex + 3] * alphaFac;
+                }
+            }
+            return output;
+        }
+
+        // Hàm xử lý: Làm nét ảnh
+        function sharpenImage() {
+            if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
+
+            try {
+                showMessage('Đang xử lý làm nét ảnh... Vui lòng chờ.', 'info');
+
+                // Tạm thời vẽ lại ảnh lên canvas với kích thước chính xác của ảnh đã xoay
+                const rotation = rotationAngle % 360;
+                const isRotated = rotation === 90 || rotation === 270;
+                const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
+                const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
+
+                canvas.width = rotatedWidth;
+                canvas.height = rotatedHeight;
+                ctx.save();
+                ctx.translate(rotatedWidth / 2, rotatedHeight / 2);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+                ctx.restore();
+
+                // 1. Lấy dữ liệu pixel
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 2. Định nghĩa Kernel Làm Nét (Sharpening Kernel)
+                const sharpenWeights = [
+                    0, -1, 0,
+                    -1, 5, -1,
+                    0, -1, 0
+                ];
+                
+                // 3. Áp dụng bộ lọc
+                const sharpenedData = applyConvolutionFilter(imageData, sharpenWeights);
+                
+                // 4. Ghi dữ liệu pixel đã xử lý trở lại canvas
+                ctx.putImageData(sharpenedData, 0, 0);
+
+                // Cập nhật originalImage để lưu trữ trạng thái mới của ảnh
+                const newImage = new Image();
+                newImage.onload = () => {
+                    originalImage = newImage;
+                    rotationAngle = 0; // Đặt lại góc xoay vì ảnh mới đã được xoay và vẽ phẳng lên canvas
+                    initCropBox();
+                    drawImage(); // Vẽ lại để cập nhật overlay
+                    showMessage('Đã áp dụng bộ lọc Làm Nét Ảnh thành công!', 'success');
+                };
+                newImage.src = canvas.toDataURL('image/jpeg', 0.95);
+                
+            } catch (error) {
+                console.error("LỖI KHI LÀM NÉT ẢNH:", error);
+                showMessage(`LỖI: Không thể làm nét ảnh. Chi tiết lỗi: ${error.message}.`, 'error');
+            }
         }
         
         /**
@@ -779,6 +883,14 @@
             drawImage();
             showMessage(`Đã xoay ảnh 90°. Góc xoay hiện tại: ${rotationAngle}°`, 'info');
         });
+
+        // Event làm nét ảnh
+        sharpenButton.addEventListener('click', sharpenImage);
+
+        // Event làm phẳng ảnh (Deskew)
+        deskewButton.addEventListener('click', () => {
+            showMessage('Tính năng "Làm Phẳng Ảnh" đang trong giai đoạn phát triển (Beta) do yêu cầu thư viện Computer Vision phức tạp (như OpenCV.js).', 'info');
+        });
         
         // Event tự động cắt
         autoCropButton.addEventListener('click', () => {
@@ -857,5 +969,3 @@
     </script>
 </body>
 </html>
-
-
