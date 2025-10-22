@@ -649,7 +649,7 @@
             }
         }
 
-        // --- HÀM TÁCH NỀN/GIỮ ĐỐI TƯỢNG (AI) (MỚI) ---
+        // --- HÀM TÁCH NỀN/GIỮ ĐỐI TƯỢNG (AI) (ĐÃ FIX) ---
         async function segmentAndKeepSelected() {
             if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
             if (!bodyPixNet) { showMessage('Mô hình AI đang tải hoặc bị lỗi. Vui lòng chờ.', 'error'); return; }
@@ -675,11 +675,11 @@
                 filterCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
                 filterCtx.restore();
 
-                // 2. Chạy segmentation
+                // 2. Chạy segmentation (ĐÃ TĂNG ĐỘ PHÂN GIẢI VÀ GIẢM NGƯỠNG)
                 const segmentation = await bodyPixNet.segmentMultiPerson(filterCanvas, {
                     flipHorizontal: false,
-                    internalResolution: 'medium',
-                    segmentationThreshold: 0.7,
+                    internalResolution: 'high', // Tăng độ phân giải
+                    segmentationThreshold: 0.5,   // Giảm ngưỡng
                     maxDetections: 10, 
                     scoreThreshold: 0.5,
                     maskBlurAmount: 3 
@@ -747,7 +747,7 @@
             }
         }
         
-        // --- HÀM TẠO ẢNH ID (ĐÃ CẬP NHẬT SEGMENTATION) ---
+        // --- HÀM TẠO ẢNH ID (ĐÃ FIX) ---
         async function createIdPortrait(ratioW, ratioH) {
             if (!originalImage) { showPortraitMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
             if (!bodyPixNet) { showPortraitMessage('Mô hình AI đang tải hoặc bị lỗi. Vui lòng chờ.', 'error'); return; }
@@ -762,8 +762,8 @@
                 // BƯỚC 1: Xóa nền trên ảnh gốc
                 const segmentation = await bodyPixNet.segmentPerson(originalImage, {
                     flipHorizontal: false,
-                    internalResolution: 'medium',
-                    segmentationThreshold: 0.7,
+                    internalResolution: 'high', // Tăng độ phân giải
+                    segmentationThreshold: 0.5,   // Giảm ngưỡng
                     maxDetections: 1,
                     scoreThreshold: 0.5,
                     maskBlurAmount: 3 
@@ -1287,11 +1287,10 @@
                 case 'pdfMerge': // Ghép Nhiều File PDF
                     pdfMergeSection.style.display = 'block';
                     break;
-            }
-            
-            // Xử lý trường hợp "Xóa nền đối tượng" (Chỉ cần Tách Nền AI, không cần cắt)
-            if (tool === 'removeObject') {
-                loadBodyPixModel();
+                case 'removeObject': // Tách Nền/Giữ Đối Tượng (AI) (Sử dụng chung UI với Image Processing Base)
+                    // Không cần làm gì, vì các control cần thiết đã được hiển thị (manualControls)
+                    loadBodyPixModel();
+                    break;
             }
         }
         
