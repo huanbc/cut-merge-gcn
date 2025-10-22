@@ -45,16 +45,16 @@
             <p class="text-gray-500 mb-6">Vui lòng chọn công cụ bạn muốn sử dụng. Các tính năng chỉnh sửa cơ bản sẽ luôn sẵn sàng.</p>
             <div id="menuOptions" class="grid grid-cols-2 gap-4">
                 <button data-tool="imageCut" class="tool-button bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
-                    Cắt/Ghép Ảnh (Phần 1-4)
+                    Cắt/Ghép Ảnh & Tạo PDF (GCN/CCCD)
                 </button>
                 <button data-tool="portrait" class="tool-button bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
                     Tạo Ảnh Chân Dung (ID/AI)
                 </button>
-                <button data-tool="pdfCreate" class="tool-button bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
-                    Ghép Ảnh thành PDF (GCN/CCCD)
-                </button>
                 <button data-tool="pdfMerge" class="tool-button bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
                     Ghép Nhiều File PDF
+                </button>
+                <button data-tool="imageCut" class="tool-button bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
+                    Chỉ Chỉnh Sửa Ảnh
                 </button>
             </div>
             <p class="text-xs text-gray-400 mt-4">Chọn một tùy chọn để tiếp tục. Bạn có thể thay đổi công cụ sau.</p>
@@ -129,6 +129,7 @@
                                 Cắt Toàn Bộ Ảnh
                             </button>
                         </div>
+                        <h3 class="text-md font-semibold mb-2 text-gray-700">1. Lưu các Phần (cho PDF GCN/CCCD):</h3>
                         <div class="flex flex-wrap gap-4 mb-4">
                             <button id="savePart1Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
                                 Cắt & Lưu Phần 1
@@ -142,6 +143,16 @@
                             <button id="savePart4Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
                                 Cắt & Lưu Phần 4
                             </button>
+                        </div>
+                        <h3 class="text-md font-semibold mb-2 text-gray-700">2. Ghép Ảnh Layout (Xuất file JPG):</h3>
+                        <div class="flex flex-wrap gap-4 mb-4">
+                            <button id="merge2x1Button" class="flex-1 min-w-[100px] bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Ghép 2 Ảnh (1x2)
+                            </button>
+                            <button id="merge2x2Button" class="flex-1 min-w-[100px] bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Ghép 4 Ảnh (2x2)
+                            </button>
+                            <p class="text-xs text-gray-500 italic mt-2 w-full">Sử dụng các "Phần đã lưu" phía trên để ghép.</p>
                         </div>
                     </div>
                     
@@ -259,6 +270,10 @@
         const backgroundSelect = document.getElementById('backgroundSelect');
         const portraitMessage = document.getElementById('portraitMessage');
         const changeToolButton = document.getElementById('changeToolButton');
+        
+        // Ghép Layout
+        const merge2x1Button = document.getElementById('merge2x1Button');
+        const merge2x2Button = document.getElementById('merge2x2Button');
 
 
         // Thay thế createPdfButton bằng 2 nút mới
@@ -884,6 +899,88 @@
                 showPortraitMessage(`Đã tạo và tải xuống ảnh chân dung ${finalWidthMM}x${finalHeightMM}mm nền ${background} (${fileType}) thành công!`, 'success');
             };
             finalImg.src = croppedDataUrl;
+        }
+        
+        // --- HÀM GHÉP ẢNH LAYOUT (MỚI) ---
+        function mergeSavedImagesToLayout(layoutType) {
+            const imagesData = [croppedImage1, croppedImage2, croppedImage3, croppedImage4];
+            let images;
+            let cols, rows;
+            let filename;
+
+            switch(layoutType) {
+                case '2x1':
+                    images = imagesData.slice(0, 2).filter(img => img !== null);
+                    if (images.length < 2) { showMessage('Vui lòng cắt và lưu ít nhất Phần 1 và Phần 2 để ghép 2 ảnh.', 'error'); return; }
+                    cols = 2; rows = 1; filename = 'AnhGhep_1x2_';
+                    break;
+                case '2x2':
+                    images = imagesData.slice(0, 4).filter(img => img !== null);
+                    if (images.length < 4) { showMessage('Vui lòng cắt và lưu đủ 4 Phần ảnh để ghép 2x2.', 'error'); return; }
+                    cols = 2; rows = 2; filename = 'AnhGhep_2x2_';
+                    break;
+                default:
+                    showMessage('Lỗi cấu hình layout.', 'error'); return;
+            }
+
+            showMessage(`Đang tiến hành ghép ${images.length} ảnh vào layout ${cols}x${rows}...`, 'info');
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Tạm thời tạo Image objects để lấy kích thước
+            const imgPromises = images.map(dataUrl => new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = dataUrl;
+            }));
+
+            Promise.all(imgPromises).then(loadedImages => {
+                if (loadedImages.length !== images.length) {
+                    showMessage('Lỗi tải ảnh để ghép. Vui lòng thử lại.', 'error');
+                    return;
+                }
+
+                // Tính toán kích thước canvas dựa trên kích thước lớn nhất của ảnh trong tập hợp
+                const maxW = loadedImages.reduce((max, img) => Math.max(max, img.width), 0);
+                const maxH = loadedImages.reduce((max, img) => Math.max(max, img.height), 0);
+                
+                tempCanvas.width = maxW * cols;
+                tempCanvas.height = maxH * rows;
+                
+                // Đảm bảo nền trắng
+                tempCtx.fillStyle = '#FFFFFF';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                // Vẽ các ảnh vào vị trí grid
+                loadedImages.forEach((img, index) => {
+                    const row = Math.floor(index / cols);
+                    const col = index % cols;
+                    const x = col * maxW;
+                    const y = row * maxH;
+                    
+                    // Vẽ ảnh, căn giữa trong cell (cell size = maxW x maxH)
+                    const drawX = x + (maxW - img.width) / 2;
+                    const drawY = y + (maxH - img.height) / 2;
+
+                    tempCtx.drawImage(img, drawX, drawY, img.width, img.height);
+                });
+
+                // Xuất ảnh và tải xuống
+                const url = tempCanvas.toDataURL('image/jpeg', 0.98);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}${Date.now()}.jpeg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                showMessage(`Đã ghép thành công ${loadedImages.length} ảnh vào layout ${cols}x${rows} và tải xuống!`, 'success');
+
+            }).catch(error => {
+                console.error("LỖI KHI GHÉP ẢNH:", error);
+                showMessage(`LỖI: Không thể ghép ảnh. Chi tiết lỗi: ${error.message}.`, 'error');
+            });
         }
 
         
@@ -1511,6 +1608,10 @@
             crop2x3Button.addEventListener('click', () => createIdPortrait(20, 30)); // 2x3 cm -> 20x30 mm
             crop3x4Button.addEventListener('click', () => createIdPortrait(30, 40)); // 3x4 cm -> 30x40 mm
             crop4x6Button.addEventListener('click', () => createIdPortrait(40, 60)); // 4x6 cm -> 40x60 mm
+            
+            // --- EVENT LISTENERS CHO GHÉP LAYOUT ---
+            merge2x1Button.addEventListener('click', () => mergeSavedImagesToLayout('2x1'));
+            merge2x2Button.addEventListener('click', () => mergeSavedImagesToLayout('2x2'));
 
 
             // --- EVENT LISTENERS CHO TẠO PDF ---
