@@ -39,14 +39,41 @@
 </head>
 <body>
 
-    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Công Cụ Cắt Ghép Ảnh thành PDF</h1>
-            <p class="text-gray-500 mt-2">AI Xử lý ảnh, ghép thành PDF A4 Chuẩn. Tác giả: Lê Minh Huấn CN VPĐKĐĐ 8 -SĐT: 0912041201 </p>
-        </header>
+    <div id="startMenu" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full text-center">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Xin chào! Bạn cần làm gì hôm nay?</h1>
+            <p class="text-gray-500 mb-6">Vui lòng chọn công cụ bạn muốn sử dụng. Các tính năng chỉnh sửa cơ bản sẽ luôn sẵn sàng.</p>
+            <div id="menuOptions" class="grid grid-cols-2 gap-4">
+                <button data-tool="imageCut" class="tool-button bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
+                    Cắt/Ghép Ảnh (Phần 1-4)
+                </button>
+                <button data-tool="portrait" class="tool-button bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
+                    Tạo Ảnh Chân Dung (ID/AI)
+                </button>
+                <button data-tool="pdfCreate" class="tool-button bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
+                    Ghép Ảnh thành PDF (GCN/CCCD)
+                </button>
+                <button data-tool="pdfMerge" class="tool-button bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out">
+                    Ghép Nhiều File PDF
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-4">Chọn một tùy chọn để tiếp tục. Bạn có thể thay đổi công cụ sau.</p>
+        </div>
+    </div>
 
-        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải và Cắt Ảnh (Chỉ hỗ trợ JPG/PNG/WEBP)</h2>
+    <div id="mainContent" class="container mx-auto p-4 md:p-8 max-w-5xl" style="display:none;">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Công Cụ Xử Lý Ảnh & PDF</h1>
+            <p class="text-gray-500 mt-2">AI Xử lý ảnh, ghép thành PDF A4 Chuẩn. Tác giả: Lê Minh Huấn CN VPĐKĐĐ 8 -SĐT: 0912041201 
+                <button id="changeToolButton" class="text-blue-500 hover:text-blue-700 font-medium ml-2 text-sm">
+                    [Đổi Công Cụ]
+                </button>
+            </p>
+        </header>
+        
+        <div id="imageProcessingBase" class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Tải, Xem trước & Chỉnh sửa Ảnh (JPG/PNG/WEBP)</h2>
             
             <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" style="display: none;" />
             <button id="uploadButton" class="w-full text-sm file:text-transparent
@@ -57,28 +84,7 @@
                 Tải Ảnh Lên (Click vào đây)
             </button>
             
-            <div id="controls" class="mt-4" style="display:none;">
-                
-                <div class="flex flex-wrap gap-4 mb-4">
-                    <button id="autoCropButton" class="flex-1 min-w-[150px] bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Đề xuất Khung Cắt (90% Ảnh Gốc)
-                    </button>
-                    <button id="rotateButton" class="flex-1 min-w-[100px] bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Xoay 90°
-                    </button>
-                    <button id="sharpenButton" class="flex-1 min-w-[100px] bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Làm Nét Ảnh
-                    </button>
-                    <button id="deskewButton" class="flex-1 min-w-[100px] bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
-                        Làm Phẳng (Beta)
-                    </button>
-                    <button id="removeObjectButton" class="flex-1 min-w-[100px] bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Tách Nền/Giữ Đối Tượng (AI)
-                    </button>
-                    <button id="resetCropButton" class="flex-1 min-w-[100px] bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Cắt Toàn Bộ Ảnh
-                    </button>
-                </div>
+            <div id="manualControls" class="mt-4" style="display:none;">
                 
                 <div class="p-3 bg-gray-50 rounded-lg mb-4 border border-gray-200">
                     <p class="text-sm font-semibold text-gray-600 mb-2">Chỉnh sửa Thủ công (Xem trước trên Canvas):</p>
@@ -96,21 +102,72 @@
                         </button>
                     </div>
                 </div>
-
+                
                 <div class="flex flex-wrap gap-4 mb-4">
-                    <button id="savePart1Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Cắt & Lưu Phần 1
+                    <button id="rotateButton" class="flex-1 min-w-[100px] bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                        Xoay 90°
                     </button>
-                    <button id="savePart2Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Cắt & Lưu Phần 2
+                    <button id="sharpenButton" class="flex-1 min-w-[100px] bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                        Làm Nét Ảnh
                     </button>
-                    <button id="savePart3Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Cắt & Lưu Phần 3
+                    <button id="deskewButton" class="flex-1 min-w-[100px] bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
+                        Làm Phẳng (Beta)
                     </button>
-                    <button id="savePart4Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
-                        Cắt & Lưu Phần 4
+                    <button id="removeObjectButton" class="flex-1 min-w-[100px] bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                        Tách Nền/Giữ Đối Tượng (AI)
                     </button>
                 </div>
+
+                <div id="toolSpecificControls" class="bg-white/95 rounded-xl">
+                    <div id="imageCutControls" class="p-0" style="display: none;">
+                        <h3 class="text-md font-semibold mb-2 text-gray-700">Cắt Ảnh:</h3>
+                        <div class="flex flex-wrap gap-4 mb-4">
+                            <button id="autoCropButton" class="flex-1 min-w-[150px] bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Đề xuất Khung Cắt (90% Ảnh Gốc)
+                            </button>
+                            <button id="resetCropButton" class="flex-1 min-w-[100px] bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Cắt Toàn Bộ Ảnh
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-4 mb-4">
+                            <button id="savePart1Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Cắt & Lưu Phần 1
+                            </button>
+                            <button id="savePart2Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Cắt & Lưu Phần 2
+                            </button>
+                            <button id="savePart3Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Cắt & Lưu Phần 3
+                            </button>
+                            <button id="savePart4Button" class="flex-1 min-w-[100px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
+                                Cắt & Lưu Phần 4
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="portraitControls" class="p-0" style="display: none;">
+                        <h3 class="text-md font-semibold mb-2 text-gray-700">Tạo Ảnh Chân Dung ID (AI Xóa nền):</h3>
+                        <div class="flex flex-wrap gap-3 mb-4 items-center">
+                            <p class="text-sm font-medium text-gray-700">Chọn Màu Nền:</p>
+                            <select id="backgroundSelect" class="p-2 border border-gray-300 rounded-lg text-sm">
+                                <option value="white">Nền Trắng</option>
+                                <option value="blue">Nền Xanh</option>
+                            </select>
+                            
+                            <button id="crop2x3Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
+                                Cắt & Tải 2x3
+                            </button>
+                            <button id="crop3x4Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
+                                Cắt & Tải 3x4
+                            </button>
+                            <button id="crop4x6Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
+                                Cắt & Tải 4x6
+                            </button>
+                        </div>
+                        <div id="portraitMessage" class="mt-4 p-3 text-sm text-blue-700 bg-blue-100 rounded-lg hidden" role="alert"></div>
+                    </div>
+                </div>
+
             </div>
 
             <div id="messageBox" class="mt-4 p-3 text-sm text-blue-700 bg-blue-100 rounded-lg hidden" role="alert"></div>
@@ -122,33 +179,8 @@
             <p class="text-sm text-gray-400 mt-4 italic text-center">Sử dụng chuột hoặc ngón tay: **Kéo** để di chuyển khung cắt. **Kéo các góc** để thay đổi kích thước.</p>
         </div>
         
-        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Tạo Ảnh Chân Dung ID (Xóa nền AI - 2x3, 3x4, 4x6)</h2>
-            <p class="text-sm text-gray-500 mb-4 font-bold text-green-600">ĐÃ KÍCH HOẠT AI: Công cụ sẽ cố gắng **tự động xóa nền** ảnh và thay thế bằng nền màu đã chọn.</p>
-            
-            <div class="flex flex-wrap gap-3 mb-4 items-center">
-                <p class="text-sm font-medium text-gray-700">Chọn Màu Nền:</p>
-                <select id="backgroundSelect" class="p-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="white">Nền Trắng</option>
-                    <option value="blue">Nền Xanh</option>
-                </select>
-                
-                <button id="crop2x3Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
-                    Cắt & Tải 2x3
-                </button>
-                <button id="crop3x4Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
-                    Cắt & Tải 3x4
-                </button>
-                <button id="crop4x6Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
-                    Cắt & Tải 4x6
-                </button>
-            </div>
-            
-            <div id="portraitMessage" class="mt-4 p-3 text-sm text-blue-700 bg-blue-100 rounded-lg hidden" role="alert"></div>
-        </div>
-
-        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Ghép Ảnh đã cắt và Xuất PDF A4 Ngang (GCN/CCCD)</h2>
+        <div id="pdfCreationSection" class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Ghép Ảnh đã cắt và Xuất PDF A4 Ngang</h2>
             <div id="pdfStatus" class="flex flex-wrap gap-4 mb-4">
                 <div id="status1" class="flex-1 min-w-[200px] p-3 rounded-lg border border-red-300 bg-red-50 text-red-700">
                     Phần 1: Chưa Lưu
@@ -173,8 +205,8 @@
             </button>
         </div>
         
-        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mt-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">4. Ghép nhiều File PDF thành 1</h2>
+        <div id="pdfMergeSection" class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mt-6" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Ghép nhiều File PDF thành 1</h2>
             <p class="text-sm text-gray-500 mb-4">Chọn **tối thiểu 2** tệp tin PDF để ghép chúng thành một file duy nhất. Tính năng này KHÔNG liên quan đến các ảnh ở phần 1 & 2.</p>
             <input type="file" id="pdfFileInput" accept="application/pdf" multiple class="w-full text-sm file:text-transparent
                 file:mr-4 file:py-2 file:px-4 file:text-white
@@ -226,6 +258,7 @@
         const crop4x6Button = document.getElementById('crop4x6Button');
         const backgroundSelect = document.getElementById('backgroundSelect');
         const portraitMessage = document.getElementById('portraitMessage');
+        const changeToolButton = document.getElementById('changeToolButton');
 
 
         // Thay thế createPdfButton bằng 2 nút mới
@@ -241,21 +274,29 @@
         const status3 = document.getElementById('status3');
         const status4 = document.getElementById('status4');
         
-        let originalImage = null;       
-        let rotationAngle = 0;          
-        let croppedImage1 = null; 
-        let croppedImage2 = null;  
-        let croppedImage3 = null;  
-        let croppedImage4 = null;  
+        // CÁC KHU VỰC CHỨC NĂNG
+        const startMenu = document.getElementById('startMenu');
+        const mainContent = document.getElementById('mainContent');
+        const imageCutControls = document.getElementById('imageCutControls');
+        const portraitControls = document.getElementById('portraitControls');
+        const pdfCreationSection = document.getElementById('pdfCreationSection');
+        const pdfMergeSection = document.getElementById('pdfMergeSection');
         
         // AI Model State
-        let bodyPixNet = null; // MỚI: Biến lưu trữ mô hình BodyPix
+        let bodyPixNet = null; 
         let isModelLoading = false;
         const modelLoadMessage = 'Đang tải mô hình AI... Vui lòng chờ.';
 
         // Lưu trữ giá trị filter hiện tại
         let currentBrightness = 100;
         let currentContrast = 100;
+
+        let originalImage = null;       
+        let rotationAngle = 0;          
+        let croppedImage1 = null; 
+        let croppedImage2 = null;  
+        let croppedImage3 = null;  
+        let croppedImage4 = null;  
 
         let cropBox = { x: 0, y: 0, width: 0, height: 0 };
         const HANDLE_SIZE = 15; 
@@ -713,7 +754,6 @@
 
             try {
                 const background = backgroundSelect.value;
-                const backgroundColor = background === 'blue' ? '#0070c0' : '#FFFFFF';
                 const finalWidthMM = ratioW;
                 const finalHeightMM = ratioH;
                 
@@ -1196,7 +1236,7 @@
             cropBox.height = newH;
         }
 
-        // --- EVENT LISTENERS KHỞI TẠO ---
+        // --- HÀM KHỞI TẠO CẮT (Giữ nguyên) ---
 
         function initCropBox(box = null) {
             const w = canvas.width;
@@ -1214,16 +1254,92 @@
                 cropBox.height = h;
             }
         }
+        
+        // --- HÀM ẨN/HIỆN CÁC KHU VỰC CHỨC NĂNG ---
+        function showSection(tool) {
+            // Ẩn tất cả các khu vực chức năng đặc thù
+            imageCutControls.style.display = 'none';
+            portraitControls.style.display = 'none';
+            pdfCreationSection.style.display = 'none';
+            pdfMergeSection.style.display = 'none';
+            
+            // Ẩn/hiện canvas và controls tải ảnh
+            if (tool === 'pdfMerge') {
+                document.getElementById('imageProcessingBase').style.display = 'none';
+            } else {
+                document.getElementById('imageProcessingBase').style.display = 'block';
+                document.getElementById('manualControls').style.display = 'block';
+            }
 
-        // --- HÀM KHỞI TẠO CHÍNH (FIX BUG) ---
+            switch (tool) {
+                case 'imageCut': // Cắt/Ghép Ảnh (Phần 1-4)
+                    imageCutControls.style.display = 'block';
+                    pdfCreationSection.style.display = 'block';
+                    break;
+                case 'portrait': // Tạo Ảnh Chân Dung
+                    portraitControls.style.display = 'block';
+                    loadBodyPixModel();
+                    break;
+                case 'pdfCreate': // Ghép Ảnh thành PDF (GCN/CCCD)
+                    imageCutControls.style.display = 'block';
+                    pdfCreationSection.style.display = 'block';
+                    break;
+                case 'pdfMerge': // Ghép Nhiều File PDF
+                    pdfMergeSection.style.display = 'block';
+                    break;
+            }
+            
+            // Xử lý trường hợp "Xóa nền đối tượng" (Chỉ cần Tách Nền AI, không cần cắt)
+            if (tool === 'removeObject') {
+                loadBodyPixModel();
+            }
+        }
+        
+        function initStartMenu() {
+            startMenu.style.display = 'none';
+            mainContent.style.display = 'block';
+            
+            // Lấy tool từ URL nếu có, nếu không thì mặc định là imageCut
+            const urlParams = new URLSearchParams(window.location.search);
+            const tool = urlParams.get('tool') || 'imageCut'; // Mặc định là Cắt/Ghép Ảnh
+            showSection(tool);
+        }
+
+        // --- HÀM KHỞI TẠO CHÍNH (FIX BUG & UX) ---
         function initApp() {
+            // Hiển thị menu khởi động ban đầu
+            startMenu.style.display = 'flex';
+            mainContent.style.display = 'none';
 
-            // Kích hoạt input file khi nhấn nút Upload
+            // 1. Liên kết các nút trong Start Menu
+            document.querySelectorAll('.tool-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const tool = e.target.getAttribute('data-tool');
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tool', tool);
+                    history.pushState(null, '', url.toString()); // Đổi URL mà không load lại trang
+                    initStartMenu(); // Chuyển sang nội dung chính
+                });
+            });
+            
+            // 2. Liên kết nút Đổi công cụ
+            changeToolButton.addEventListener('click', () => {
+                startMenu.style.display = 'flex';
+                mainContent.style.display = 'none';
+                // Đảm bảo URL được reset khi quay lại menu chính
+                const url = new URL(window.location.href);
+                url.searchParams.delete('tool');
+                history.pushState(null, '', url.toString());
+            });
+            
+            // 3. Liên kết các sự kiện chính (Giữ nguyên logic từ code cũ)
+            
+            // Event tải file ảnh 
             uploadButton.addEventListener('click', () => {
                 fileInput.click();
             });
 
-            // Event tải file ảnh 
+            // Event tải file ảnh (change event)
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1241,7 +1357,7 @@
                     originalImage.onerror = (err) => {
                          console.error("[ERROR] Lỗi khi gán DataURL vào Image (Image.onerror fired). Image không hợp lệ hoặc quá lớn.", err);
                          showMessage(`Lỗi: Không thể hiển thị tệp tin (${file.name}). Tệp ảnh có thể bị lỗi, không phải định dạng JPG/PNG chuẩn, hoặc quá lớn. Vui lòng kiểm tra Console (F12).`, 'error');
-                         controls.style.display = 'none';
+                         document.getElementById('manualControls').style.display = 'none';
                          originalImage = null;
                          ctx.clearRect(0, 0, canvas.width, canvas.height);
                     }
@@ -1258,7 +1374,7 @@
                         brightnessValue.textContent = '100%';
                         contrastValue.textContent = '100%';
 
-                        controls.style.display = 'block'; 
+                        document.getElementById('manualControls').style.display = 'block'; 
                         
                         drawImage(); 
                         initCropBox();
@@ -1275,7 +1391,8 @@
                 reader.readAsDataURL(file);
             });
 
-            // Event xoay ảnh
+            // --- LIÊN KẾT CÁC SỰ KIỆN KHÁC ---
+
             rotateButton.addEventListener('click', () => {
                 if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
                 rotationAngle = (rotationAngle + 90) % 360;
@@ -1285,18 +1402,14 @@
                 showMessage(`Đã xoay ảnh 90°. Góc xoay hiện tại: ${rotationAngle}°`, 'info');
             });
 
-            // Event làm nét ảnh
             sharpenButton.addEventListener('click', sharpenImage);
 
-            // Event làm phẳng ảnh (Deskew)
             deskewButton.addEventListener('click', () => {
                 showMessage('Tính năng "Làm Phẳng Ảnh" đang trong giai đoạn phát triển (Beta) do yêu cầu thư viện Computer Vision phức tạp (như OpenCV.js).', 'error');
             });
             
-            // Event xóa đối tượng thừa
             removeObjectButton.addEventListener('click', segmentAndKeepSelected);
 
-            // Event tự động cắt
             autoCropButton.addEventListener('click', () => {
                 if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
                 const canvasW = canvas.width;
@@ -1311,7 +1424,6 @@
                 showMessage('Đã đặt khung cắt mặc định 90% kích thước ảnh. Bạn có thể kéo thả để tinh chỉnh.', 'success');
             });
 
-            // Event reset khung cắt
             resetCropButton.addEventListener('click', () => {
                 if (!originalImage) return;
                 initCropBox();
@@ -1428,11 +1540,14 @@
             canvas.addEventListener('touchend', handleTouchEnd);
 
 
-            // Khởi tạo trạng thái ban đầu và tải model AI
-            updateStatus(); 
-            showMergeMessage('Chọn các file PDF bạn muốn ghép lại thành một file duy nhất.', 'info');
-            showPortraitMessage('Chọn khung cắt phù hợp cho ảnh chân dung ID, sau đó chọn kích thước và nền để tải xuống. Đang tải mô hình AI...', 'info');
-            loadBodyPixModel();
+            // 4. Kiểm tra URL để biết có nên bỏ qua Menu khởi động không
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('tool')) {
+                initStartMenu();
+            } else {
+                 updateStatus(); 
+                 showMergeMessage('Chọn các file PDF bạn muốn ghép lại thành một file duy nhất.', 'info');
+            }
         }
 
         // --- Đảm bảo toàn bộ ứng dụng được khởi tạo sau khi trang đã tải xong ---
