@@ -7,6 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script> 
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.13.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0/dist/body-pix.min.js"></script>
+    
     <style>
         /* Đảm bảo canvas có thể mở rộng */
         #imageCanvas {
@@ -68,7 +72,7 @@
                     <button id="deskewButton" class="flex-1 min-w-[100px] bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
                         Làm Phẳng (Beta)
                     </button>
-                    <button id="removeObjectButton" class="flex-1 min-w-[100px] bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
+                    <button id="removeObjectButton" class="flex-1 min-w-[100px] bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
                         Xóa Đối Tượng (AI)
                     </button>
                     <button id="resetCropButton" class="flex-1 min-w-[100px] bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
@@ -119,8 +123,8 @@
         </div>
         
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Tạo Ảnh Chân Dung ID (2x3, 3x4, 4x6)</h2>
-            <p class="text-sm text-gray-500 mb-4">Sử dụng khung cắt ảnh hiện tại để tạo ảnh chân dung với tỷ lệ chuẩn. Đề xuất: Cắt khuôn mặt và vai vào khung trước khi sử dụng.</p>
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Tạo Ảnh Chân Dung ID (Xóa nền AI - 2x3, 3x4, 4x6)</h2>
+            <p class="text-sm text-gray-500 mb-4 font-bold text-green-600">ĐÃ KÍCH HOẠT AI: Công cụ sẽ cố gắng **tự động xóa nền** ảnh và thay thế bằng nền màu đã chọn.</p>
             
             <div class="flex flex-wrap gap-3 mb-4 items-center">
                 <p class="text-sm font-medium text-gray-700">Chọn Màu Nền:</p>
@@ -203,7 +207,7 @@
         const resetCropButton = document.getElementById('resetCropButton');
         const sharpenButton = document.getElementById('sharpenButton'); 
         const deskewButton = document.getElementById('deskewButton');   
-        const removeObjectButton = document.getElementById('removeObjectButton'); // MỚI
+        const removeObjectButton = document.getElementById('removeObjectButton'); 
         const savePart1Button = document.getElementById('savePart1Button');
         const savePart2Button = document.getElementById('savePart2Button');
         const savePart3Button = document.getElementById('savePart3Button');
@@ -214,7 +218,7 @@
         const brightnessValue = document.getElementById('brightnessValue');
         const contrastSlider = document.getElementById('contrastSlider');
         const contrastValue = document.getElementById('contrastValue');
-        const applyColorButton = document.getElementById('applyColorButton'); // MỚI
+        const applyColorButton = document.getElementById('applyColorButton'); 
 
         // Tạo ảnh ID
         const crop2x3Button = document.getElementById('crop2x3Button');
@@ -244,6 +248,11 @@
         let croppedImage3 = null;  
         let croppedImage4 = null;  
         
+        // AI Model State
+        let bodyPixNet = null; // MỚI: Biến lưu trữ mô hình BodyPix
+        let isModelLoading = false;
+        const modelLoadMessage = 'Đang tải mô hình AI... Vui lòng chờ.';
+
         // Lưu trữ giá trị filter hiện tại
         let currentBrightness = 100;
         let currentContrast = 100;
@@ -313,9 +322,11 @@
             
             // Bật/tắt nút tạo ảnh ID
             const isImageLoaded = originalImage !== null;
-            crop2x3Button.disabled = !isImageLoaded;
-            crop3x4Button.disabled = !isImageLoaded;
-            crop4x6Button.disabled = !isImageLoaded;
+            const isModelReady = bodyPixNet !== null;
+
+            crop2x3Button.disabled = !isImageLoaded || !isModelReady || isModelLoading;
+            crop3x4Button.disabled = !isImageLoaded || !isModelReady || isModelLoading;
+            crop4x6Button.disabled = !isImageLoaded || !isModelReady || isModelLoading;
         }
         
         // --- HÀM HỖ TRỢ CHUNG (GHÉP PDF) ---
@@ -372,9 +383,6 @@
 
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
-
-            // Áp dụng bộ lọc Canvas API (chỉ áp dụng nếu không dùng CSS filter)
-            // Nếu dùng CSS filter thì không cần áp dụng filter ở đây, nhưng phải nhớ lưu trạng thái filter vào originalImage khi nhấn Apply.
 
             ctx.save();
             ctx.translate(canvasWidth / 2, canvasHeight / 2);
@@ -433,40 +441,27 @@
             const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
             const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
 
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = rotatedWidth;
-            tempCanvas.height = rotatedHeight;
-
-            // Áp dụng filter CSS (nếu có) vào tempCanvas TRƯỚC KHI vẽ ảnh
-            tempCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
-
-            tempCtx.save();
-            tempCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
-            tempCtx.rotate(rotation * Math.PI / 180);
-            tempCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
-            tempCtx.restore();
-
             const finalCanvas = document.createElement('canvas');
             const finalCtx = finalCanvas.getContext('2d');
             finalCanvas.width = cropWidth;
             finalCanvas.height = cropHeight;
 
             try {
-                // Áp dụng bộ lọc cho dữ liệu ảnh trước khi cắt (Để đảm bảo filter CSS được áp dụng)
-                // Do không có cách chuẩn để chuyển CSS Filter sang Canvas, ta phải lấy ảnh đã áp dụng filter từ tempCanvas
-                // Cần 2 canvas mới để thực hiện điều này một cách an toàn và áp dụng filter bằng cách vẽ lại
-                
+                // Canvas phụ để áp dụng CSS Filter và xoay
                 const filterCanvas = document.createElement('canvas');
                 const filterCtx = filterCanvas.getContext('2d');
                 filterCanvas.width = rotatedWidth;
                 filterCanvas.height = rotatedHeight;
                 filterCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
 
-                // Vẽ ảnh gốc lên canvas có filter
-                filterCtx.drawImage(originalImage, 0, 0, rotatedWidth, rotatedHeight);
-                
-                // Lấy dữ liệu ảnh đã lọc
+                // Vẽ ảnh đã xoay
+                filterCtx.save();
+                filterCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+                filterCtx.rotate(rotation * Math.PI / 180);
+                filterCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+                filterCtx.restore();
+
+                // Lấy dữ liệu ảnh đã lọc và xoay
                 const filteredImageData = filterCtx.getImageData(sourceX, sourceY, cropWidth, cropHeight);
                 
                 // Cắt
@@ -478,12 +473,11 @@
 
             return finalCanvas.toDataURL('image/jpeg', 0.95);
         }
-        
+
         // --- HÀM LÀM NÉT ẢNH (SHARPEN) ---
         
         // Hàm tiện ích: Áp dụng bộ lọc Convolution (Giữ nguyên)
         function applyConvolutionFilter(pixels, weights) {
-            // ... (Code áp dụng Convolution Filter)
             const side = Math.round(Math.sqrt(weights.length));
             const halfSide = Math.floor(side / 2);
             const src = pixels.data;
@@ -493,7 +487,6 @@
             const dst = output.data;
             const alphaFac = 1;
 
-            // Lặp qua từng pixel (không tính viền)
             for (let y = halfSide; y < sh - halfSide; y++) {
                 for (let x = halfSide; x < sw - halfSide; x++) {
                     const dstIndex = (y * sw + x) * 4;
@@ -529,34 +522,25 @@
             try {
                 showMessage('Đang xử lý làm nét ảnh... Vui lòng chờ.', 'info');
 
-                // Tạm thời vẽ lại ảnh lên canvas với kích thước chính xác của ảnh đã xoay
                 const rotation = rotationAngle % 360;
                 const isRotated = rotation === 90 || rotation === 270;
                 const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
                 const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
 
-                canvas.width = rotatedWidth;
-                canvas.height = rotatedHeight;
-                canvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`; // Áp dụng filter CSS
-
-                ctx.save();
-                ctx.translate(rotatedWidth / 2, rotatedHeight / 2);
-                ctx.rotate(rotation * Math.PI / 180);
-                ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
-                ctx.restore();
-
-                // Do bộ lọc Convolution không thể áp dụng trực tiếp lên ảnh đã có CSS Filter,
-                // ta phải lấy ảnh đã áp dụng filter để làm nét (cách an toàn là tạo canvas phụ)
-
+                // Canvas phụ để áp dụng CSS Filter và xoay
                 const filterCanvas = document.createElement('canvas');
                 const filterCtx = filterCanvas.getContext('2d');
                 filterCanvas.width = rotatedWidth;
                 filterCanvas.height = rotatedHeight;
-                // Áp dụng filter CSS bằng cách vẽ lại ảnh đã có filter lên canvas mới
                 filterCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
-                filterCtx.drawImage(originalImage, 0, 0, rotatedWidth, rotatedHeight);
+                
+                filterCtx.save();
+                filterCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+                filterCtx.rotate(rotation * Math.PI / 180);
+                filterCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+                filterCtx.restore();
 
-                // Lấy dữ liệu pixel đã có filter
+                // Lấy dữ liệu pixel đã có filter/rotation
                 const imageData = filterCtx.getImageData(0, 0, filterCanvas.width, filterCanvas.height);
                 
                 // Định nghĩa Kernel Làm Nét (Sharpening Kernel)
@@ -566,22 +550,27 @@
                 const sharpenedData = applyConvolutionFilter(imageData, sharpenWeights);
                 
                 // Ghi dữ liệu pixel đã xử lý trở lại canvas chính (xóa filter CSS)
+                canvas.width = rotatedWidth;
+                canvas.height = rotatedHeight;
                 canvas.style.filter = 'brightness(100%) contrast(100%)'; 
                 ctx.putImageData(sharpenedData, 0, 0);
 
-                // Cập nhật originalImage để lưu trữ trạng thái mới của ảnh (bao gồm cả filter và sharpen)
+                // Cập nhật originalImage để lưu trữ trạng thái mới của ảnh
                 const newImage = new Image();
                 newImage.onload = () => {
                     originalImage = newImage;
-                    currentBrightness = 100; // Reset filter sau khi áp dụng vĩnh viễn
+                    
+                    // Reset filter sau khi áp dụng vĩnh viễn
+                    currentBrightness = 100; 
                     currentContrast = 100;
                     brightnessSlider.value = 100;
                     contrastSlider.value = 100;
                     brightnessValue.textContent = '100%';
                     contrastValue.textContent = '100%';
+                    
                     rotationAngle = 0; 
                     initCropBox();
-                    drawImage(); // Vẽ lại để cập nhật overlay
+                    drawImage(); 
                     showMessage('Đã áp dụng bộ lọc Làm Nét Ảnh thành công! Độ sáng/tương phản đã được đặt lại 100%.', 'success');
                 };
                 newImage.src = canvas.toDataURL('image/jpeg', 0.95);
@@ -592,74 +581,175 @@
             }
         }
         
-        // --- HÀM TẠO ẢNH ID (MỚI) ---
-        function createIdPortrait(ratioW, ratioH) {
-            if (!originalImage) { showPortraitMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
-
-            try {
-                showPortraitMessage(`Đang tạo ảnh chân dung ${ratioW}x${ratioH}mm... Vui lòng chờ.`, 'info');
-                
-                // 1. Cắt ảnh theo khung đã chọn và tỷ lệ W/H
-                const croppedDataUrl = cropImage(); 
-                if (!croppedDataUrl) {
-                    showPortraitMessage('Lỗi khi cắt ảnh. Vui lòng kiểm tra khung cắt.', 'error');
-                    return;
+        // --- HÀM TẢI MÔ HÌNH AI (MỚI) ---
+        async function loadBodyPixModel() {
+            if (bodyPixNet === null && !isModelLoading) {
+                isModelLoading = true;
+                showPortraitMessage(modelLoadMessage, 'info');
+                try {
+                    bodyPixNet = await bodyPix.load({
+                        architecture: 'MobileNetV1',
+                        outputStride: 16,
+                        multiplier: 0.75,
+                        quantBytes: 2
+                    });
+                    showPortraitMessage('Đã tải mô hình AI thành công! Sẵn sàng xóa nền.', 'success');
+                } catch (error) {
+                    console.error("LỖI KHI TẢI MÔ HÌNH BODYPIX:", error);
+                    showPortraitMessage('LỖI: Không thể tải mô hình AI BodyPix. Tính năng Xóa nền ID sẽ không hoạt động.', 'error');
+                } finally {
+                    isModelLoading = false;
+                    updateStatus();
                 }
-                
-                const background = backgroundSelect.value;
-                const backgroundColor = background === 'blue' ? '#0070c0' : '#FFFFFF'; // Màu Xanh Chuẩn
-                const ratio = ratioW / ratioH;
-                
-                // Kích thước chuẩn tính bằng mm (tương đối)
-                const finalWidthMM = ratioW;
-                const finalHeightMM = ratioH;
-
-                // Kích thước đầu ra: Dùng kích thước lớn để ảnh không bị vỡ (ví dụ 500px/cm)
-                const scaleFactor = 10; // 1mm = 10px để giữ chất lượng (87mm = 870px)
-                const outputWidthPx = finalWidthMM * scaleFactor;
-                const outputHeightPx = finalHeightMM * scaleFactor;
-
-                const finalCanvas = document.createElement('canvas');
-                const finalCtx = finalCanvas.getContext('2d');
-                finalCanvas.width = outputWidthPx;
-                finalCanvas.height = outputHeightPx;
-
-                // 2. Vẽ nền màu (Xanh/Trắng)
-                finalCtx.fillStyle = backgroundColor;
-                finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-
-                // 3. Vẽ ảnh đã cắt lên trên nền
-                const img = new Image();
-                img.onload = () => {
-                    // Fit ảnh vào nền, giữ nguyên tỷ lệ ảnh đã cắt
-                    let imageW = outputWidthPx;
-                    let imageH = imageW / (img.width / img.height); // Chiều cao mới theo tỷ lệ ảnh đã cắt
-
-                    // Căn giữa ảnh trong khung (chỉ căn giữa ngang, dịch lên một chút nếu cần)
-                    const startX = 0;
-                    const startY = (outputHeightPx - imageH) / 2; 
-
-                    // Lại vẽ ảnh: Đã cắt & có filter áp dụng từ hàm cropImage()
-                    finalCtx.drawImage(img, startX, startY, imageW, imageH);
-
-                    // 4. Tải xuống
-                    const url = finalCanvas.toDataURL('image/jpeg', 0.98);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Anh_ID_${ratioW}x${ratioH}mm_${background}_${Date.now()}.jpeg`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    showPortraitMessage(`Đã tạo và tải xuống ảnh chân dung ${ratioW}x${ratioH}mm nền ${background} thành công!`, 'success');
-                };
-                img.src = croppedDataUrl;
-
-            } catch (error) {
-                console.error("LỖI KHI TẠO ẢNH ID:", error);
-                showPortraitMessage(`LỖI: Không thể tạo ảnh chân dung. Chi tiết lỗi: ${error.message}.`, 'error');
+            } else if (bodyPixNet) {
+                showPortraitMessage('Mô hình AI đã sẵn sàng.', 'success');
             }
         }
+
+        // --- HÀM TẠO ẢNH ID (ĐÃ CẬP NHẬT SEGMENTATION) ---
+        async function createIdPortrait(ratioW, ratioH) {
+            if (!originalImage) { showPortraitMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
+            if (!bodyPixNet) { showPortraitMessage('Mô hình AI đang tải hoặc bị lỗi. Vui lòng chờ.', 'error'); return; }
+
+            try {
+                const background = backgroundSelect.value;
+                const backgroundColor = background === 'blue' ? '#0070c0' : '#FFFFFF';
+                const finalWidthMM = ratioW;
+                const finalHeightMM = ratioH;
+                const scaleFactor = 10; 
+                const outputWidthPx = finalWidthMM * scaleFactor;
+                const outputHeightPx = finalHeightMM * scaleFactor;
+                
+                showPortraitMessage('Đang xử lý AI: Xóa nền ảnh và cắt theo khung... Quá trình này mất vài giây.', 'info');
+
+                // BƯỚC 1: Xóa nền trên ảnh gốc
+                const segmentation = await bodyPixNet.segmentPerson(originalImage, {
+                    flipHorizontal: false,
+                    internalResolution: 'medium',
+                    segmentationThreshold: 0.7,
+                    maxDetections: 1,
+                    scoreThreshold: 0.5,
+                    maskBlurAmount: 3 
+                });
+
+                if (!segmentation || segmentation.allContours.length === 0) {
+                     showPortraitMessage('AI không thể phát hiện đối tượng con người trong ảnh. Đang sử dụng ảnh gốc không xóa nền.', 'error');
+                     // Nếu AI lỗi, sử dụng ảnh đã cắt thông thường (fallback)
+                     const croppedDataUrl = cropImage(); 
+                     if (!croppedDataUrl) return;
+                     await processFinalPortrait(croppedDataUrl, background, finalWidthMM, finalHeightMM);
+                     return;
+                }
+                
+                // Tạo Canvas phụ để vẽ ảnh đã xoay/filter
+                const rotation = rotationAngle % 360;
+                const isRotated = rotation === 90 || rotation === 270;
+                const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
+                const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
+                
+                const filterCanvas = document.createElement('canvas');
+                const filterCtx = filterCanvas.getContext('2d');
+                filterCanvas.width = rotatedWidth;
+                filterCanvas.height = rotatedHeight;
+                filterCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+
+                filterCtx.save();
+                filterCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+                filterCtx.rotate(rotation * Math.PI / 180);
+                filterCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+                filterCtx.restore();
+                
+                // Lấy mask (mặt nạ)
+                const backgroundGray = { r: 0, g: 0, b: 0, a: 0 }; // Alpha = 0 để làm trong suốt
+                const foregroundColor = { r: 255, g: 255, b: 255, a: 255 };
+                const mask = bodyPix.toMask(segmentation, foregroundColor, backgroundGray);
+
+                // Tạo Canvas đích để vẽ mask lên ảnh đã filter/xoay
+                const segmentedCanvas = document.createElement('canvas');
+                const segmentedCtx = segmentedCanvas.getContext('2d');
+                segmentedCanvas.width = rotatedWidth;
+                segmentedCanvas.height = rotatedHeight;
+                
+                // BƯỚC 2: Áp dụng mask lên ảnh đã filter/xoay
+                // bodyPix.drawMask sẽ áp dụng mask lên ảnh.
+                // Ở đây ta sử dụng segmentedCanvas làm nơi nhận kết quả, filterCanvas làm nguồn ảnh.
+                bodyPix.drawMask(
+                    segmentedCanvas, // Canvas đích
+                    filterCanvas,    // Ảnh gốc đã filter/xoay
+                    mask,            // Mask đã tạo
+                    1.0,             // Độ trong suốt của mask (mask opacity)
+                    0,               // Mask blur amount (đã xử lý ở trên)
+                    false            // Chỉ vẽ phần foreground
+                );
+
+                // BƯỚC 3: Cắt ảnh đã xóa nền theo khung cắt hiện tại
+                const croppedSegmentedCanvas = document.createElement('canvas');
+                const croppedSegmentedCtx = croppedSegmentedCanvas.getContext('2d');
+                croppedSegmentedCanvas.width = cropBox.width;
+                croppedSegmentedCanvas.height = cropBox.height;
+
+                try {
+                    // Cắt theo cropBox hiện tại
+                    const segmentedCroppedImageData = segmentedCtx.getImageData(cropBox.x, cropBox.y, cropBox.width, cropBox.height);
+                    croppedSegmentedCtx.putImageData(segmentedCroppedImageData, 0, 0);
+                } catch (error) {
+                    console.error("Lỗi khi lấy/đặt dữ liệu ảnh sau segment:", error);
+                    showPortraitMessage('Lỗi hệ thống khi cắt ảnh đã xóa nền.', 'error');
+                    return;
+                }
+                const croppedSegmentedDataUrl = croppedSegmentedCanvas.toDataURL('image/png');
+
+
+                // BƯỚC 4: Vẽ lên Canvas đích với nền màu và tải xuống
+                await processFinalPortrait(croppedSegmentedDataUrl, background, finalWidthMM, finalHeightMM);
+
+            } catch (error) {
+                console.error("LỖI KHI TẠO ẢNH ID (FINAL):", error);
+                showPortraitMessage(`LỖI: Không thể tạo ảnh chân dung AI. Chi tiết lỗi: ${error.message}.`, 'error');
+            }
+        }
+        
+        // --- HÀM XỬ LÝ VẼ VÀ TẢI XUỐNG CUỐI CÙNG (MỚI) ---
+        async function processFinalPortrait(croppedDataUrl, background, finalWidthMM, finalHeightMM) {
+            const backgroundColor = background === 'blue' ? '#0070c0' : '#FFFFFF';
+            const scaleFactor = 10; 
+            const outputWidthPx = finalWidthMM * scaleFactor;
+            const outputHeightPx = finalHeightMM * scaleFactor;
+
+            const finalCanvas = document.createElement('canvas');
+            const finalCtx = finalCanvas.getContext('2d');
+            finalCanvas.width = outputWidthPx;
+            finalCanvas.height = outputHeightPx;
+
+            // 1. Vẽ nền màu (Xanh/Trắng)
+            finalCtx.fillStyle = backgroundColor;
+            finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+            // 2. Vẽ ảnh đã cắt lên trên nền
+            const finalImg = new Image();
+            finalImg.onload = () => {
+                // Fit ảnh người đã cắt vào khung nền ID
+                let imageW = outputWidthPx;
+                let imageH = imageW / (finalImg.width / finalImg.height); 
+                const startX = 0;
+                const startY = (outputHeightPx - imageH) / 2; 
+
+                finalCtx.drawImage(finalImg, startX, startY, imageW, imageH);
+
+                // 3. Tải xuống
+                const url = finalCanvas.toDataURL('image/jpeg', 0.98);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Anh_ID_AI_${finalWidthMM}x${finalHeightMM}mm_${background}_${Date.now()}.jpeg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                showPortraitMessage(`Đã tạo và tải xuống ảnh chân dung ${finalWidthMM}x${finalHeightMM}mm nền ${background} (AI Xóa Nền) thành công!`, 'success');
+            };
+            finalImg.src = croppedDataUrl;
+        }
+
         
         // --- HÀM TẠO PDF (Giữ nguyên) ---
         // ... (createGcnPdfFromMultipleImages, createCccdPdfFromTwoImages, mergePdfs) ...
@@ -668,7 +758,6 @@
          * Chế độ GCN: Xuất mỗi ảnh đã cắt ra một trang PDF A4 Ngang riêng biệt, co giãn để vừa chiều rộng.
          */
         function createGcnPdfFromMultipleImages() {
-            // ... (Code tạo PDF GCN) ...
             const imagesData = [croppedImage1, croppedImage2, croppedImage3, croppedImage4];
             const images = imagesData.filter(img => img !== null);
             
@@ -743,7 +832,6 @@
          * Chế độ CCCD: Ghép ảnh Phần 1 & Phần 2 vào 1 trang PDF A4 Ngang với kích thước chuẩn.
          */
         function createCccdPdfFromTwoImages() {
-            // ... (Code tạo PDF CCCD) ...
             if (!croppedImage1 || !croppedImage2) {
                 showMessage('Vui lòng cắt và lưu cả Phần 1 và Phần 2 để ghép CCCD (2 Mặt).', 'error');
                 return;
@@ -804,7 +892,6 @@
 
         // --- LOGIC GHÉP PDF (Giữ nguyên) ---
         async function mergePdfs() {
-            // ... (Code ghép PDF) ...
             const files = pdfFileInput.files;
             if (files.length < 2) {
                 showMergeMessage('Vui lòng chọn ít nhất 2 file PDF để ghép.', 'error');
@@ -858,7 +945,6 @@
         }
         
         // --- HÀM XỬ LÝ TƯƠNG TÁC (KÉO THẢ) (Giữ nguyên) ---
-        // ... (getHandleAt, getMousePos, handleMouseDown, handleMouseMove, handleMouseUp, getTouchPos, handleTouchStart, handleTouchMove, handleTouchEnd, updateCropBox) ...
         
         function getHandleAt(x, y) {
             const { x: cx, y: cy, width: cw, height: ch } = cropBox;
@@ -1014,7 +1100,7 @@
             cropBox.width = newW;
             cropBox.height = newH;
         }
-        
+
         // --- EVENT LISTENERS KHỞI TẠO ---
 
         function initCropBox(box = null) {
@@ -1111,7 +1197,7 @@
         
         // Event xóa đối tượng thừa
         removeObjectButton.addEventListener('click', () => {
-            showMessage('Công cụ "Xóa Đối Tượng Thừa" yêu cầu mô hình AI xử lý ảnh phức tạp (Inpainting) và không thể tích hợp trực tiếp vào trình duyệt qua Canvas/JavaScript thông thường.', 'error');
+            showMessage('Công cụ "Xóa Đối Tượng Thừa" yêu cầu mô hình AI phức tạp (Inpainting) và không thể tích hợp vào trình duyệt qua BodyPix.', 'error');
         });
 
         // Event tự động cắt
@@ -1169,7 +1255,12 @@
             tempCanvas.height = rotatedHeight;
             tempCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
             
-            tempCtx.drawImage(originalImage, 0, 0, rotatedWidth, rotatedHeight);
+            // Vẽ ảnh đã xoay
+            tempCtx.save();
+            tempCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+            tempCtx.rotate(rotation * Math.PI / 180);
+            tempCtx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+            tempCtx.restore();
 
             // 2. Lấy DataURL của ảnh đã áp dụng filter
             const newImageSrc = tempCanvas.toDataURL('image/jpeg', 0.95);
@@ -1252,10 +1343,13 @@
         canvas.addEventListener('touchend', handleTouchEnd);
 
 
-        // Khởi tạo trạng thái ban đầu
-        updateStatus(); 
-        showMergeMessage('Chọn các file PDF bạn muốn ghép lại thành một file duy nhất.', 'info');
-        showPortraitMessage('Chọn khung cắt phù hợp cho ảnh chân dung ID, sau đó chọn kích thước và nền để tải xuống.', 'info');
+        // Khởi tạo trạng thái ban đầu và tải model AI
+        window.addEventListener('load', () => {
+            updateStatus(); 
+            showMergeMessage('Chọn các file PDF bạn muốn ghép lại thành một file duy nhất.', 'info');
+            showPortraitMessage('Chọn khung cắt phù hợp cho ảnh chân dung ID, sau đó chọn kích thước và nền để tải xuống. Đang tải mô hình AI...', 'info');
+            loadBodyPixModel();
+        });
     </script>
 </body>
 </html>
