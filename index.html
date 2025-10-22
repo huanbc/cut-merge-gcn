@@ -18,6 +18,8 @@
             /* Cần thiết lập position: relative để các lớp overlay vẽ đúng */
             position: relative; 
             cursor: default;
+            /* Thêm filter CSS để áp dụng hiệu ứng độ sáng/tương phản */
+            filter: brightness(100%) contrast(100%); 
         }
         /* Sử dụng font Inter cho thẩm mỹ */
         body {
@@ -64,11 +66,31 @@
                         Làm Nét Ảnh
                     </button>
                     <button id="deskewButton" class="flex-1 min-w-[100px] bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
-                        Làm Phẳng Ảnh (Beta)
+                        Làm Phẳng (Beta)
+                    </button>
+                    <button id="removeObjectButton" class="flex-1 min-w-[100px] bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out" disabled>
+                        Xóa Đối Tượng (AI)
                     </button>
                     <button id="resetCropButton" class="flex-1 min-w-[100px] bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out">
                         Cắt Toàn Bộ Ảnh
                     </button>
+                </div>
+                
+                <div class="p-3 bg-gray-50 rounded-lg mb-4 border border-gray-200">
+                    <p class="text-sm font-semibold text-gray-600 mb-2">Chỉnh sửa Thủ công (Xem trước trên Canvas):</p>
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <label for="brightnessSlider" class="text-sm text-gray-700 min-w-[80px]">Độ Sáng:</label>
+                        <input type="range" id="brightnessSlider" min="50" max="150" value="100" class="flex-grow h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg">
+                        <span id="brightnessValue" class="text-sm font-mono text-gray-800 w-[40px]">100%</span>
+
+                        <label for="contrastSlider" class="text-sm text-gray-700 min-w-[80px]">Tương Phản:</label>
+                        <input type="range" id="contrastSlider" min="50" max="150" value="100" class="flex-grow h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg">
+                        <span id="contrastValue" class="text-sm font-mono text-gray-800 w-[40px]">100%</span>
+                        
+                        <button id="applyColorButton" class="bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-1 px-3 rounded-full shadow transition duration-150 ease-in-out ml-auto">
+                            Áp Dụng Vĩnh Viễn
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex flex-wrap gap-4 mb-4">
@@ -97,7 +119,32 @@
         </div>
         
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Ghép Ảnh đã cắt và Xuất PDF A4 Ngang</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Tạo Ảnh Chân Dung ID (2x3, 3x4, 4x6)</h2>
+            <p class="text-sm text-gray-500 mb-4">Sử dụng khung cắt ảnh hiện tại để tạo ảnh chân dung với tỷ lệ chuẩn. Đề xuất: Cắt khuôn mặt và vai vào khung trước khi sử dụng.</p>
+            
+            <div class="flex flex-wrap gap-3 mb-4 items-center">
+                <p class="text-sm font-medium text-gray-700">Chọn Màu Nền:</p>
+                <select id="backgroundSelect" class="p-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="white">Nền Trắng</option>
+                    <option value="blue">Nền Xanh</option>
+                </select>
+                
+                <button id="crop2x3Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
+                    Cắt & Tải 2x3
+                </button>
+                <button id="crop3x4Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
+                    Cắt & Tải 3x4
+                </button>
+                <button id="crop4x6Button" class="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-150 ease-in-out disabled:opacity-50">
+                    Cắt & Tải 4x6
+                </button>
+            </div>
+            
+            <div id="portraitMessage" class="mt-4 p-3 text-sm text-blue-700 bg-blue-100 rounded-lg hidden" role="alert"></div>
+        </div>
+
+        <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Ghép Ảnh đã cắt và Xuất PDF A4 Ngang (GCN/CCCD)</h2>
             <div id="pdfStatus" class="flex flex-wrap gap-4 mb-4">
                 <div id="status1" class="flex-1 min-w-[200px] p-3 rounded-lg border border-red-300 bg-red-50 text-red-700">
                     Phần 1: Chưa Lưu
@@ -123,7 +170,7 @@
         </div>
         
         <div class="bg-white/95 p-6 rounded-xl shadow-lg border border-gray-100 mt-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Ghép nhiều File PDF thành 1</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">4. Ghép nhiều File PDF thành 1</h2>
             <p class="text-sm text-gray-500 mb-4">Chọn **tối thiểu 2** tệp tin PDF để ghép chúng thành một file duy nhất. Tính năng này KHÔNG liên quan đến các ảnh ở phần 1 & 2.</p>
             <input type="file" id="pdfFileInput" accept="application/pdf" multiple class="w-full text-sm file:text-transparent
                 file:mr-4 file:py-2 file:px-4 file:text-white
@@ -154,12 +201,29 @@
         const rotateButton = document.getElementById('rotateButton');
         const autoCropButton = document.getElementById('autoCropButton');
         const resetCropButton = document.getElementById('resetCropButton');
-        const sharpenButton = document.getElementById('sharpenButton'); // THÊM
-        const deskewButton = document.getElementById('deskewButton');   // THÊM
+        const sharpenButton = document.getElementById('sharpenButton'); 
+        const deskewButton = document.getElementById('deskewButton');   
+        const removeObjectButton = document.getElementById('removeObjectButton'); // MỚI
         const savePart1Button = document.getElementById('savePart1Button');
         const savePart2Button = document.getElementById('savePart2Button');
         const savePart3Button = document.getElementById('savePart3Button');
         const savePart4Button = document.getElementById('savePart4Button');
+        
+        // Điều khiển màu sắc
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const brightnessValue = document.getElementById('brightnessValue');
+        const contrastSlider = document.getElementById('contrastSlider');
+        const contrastValue = document.getElementById('contrastValue');
+        const applyColorButton = document.getElementById('applyColorButton'); // MỚI
+
+        // Tạo ảnh ID
+        const crop2x3Button = document.getElementById('crop2x3Button');
+        const crop3x4Button = document.getElementById('crop3x4Button');
+        const crop4x6Button = document.getElementById('crop4x6Button');
+        const backgroundSelect = document.getElementById('backgroundSelect');
+        const portraitMessage = document.getElementById('portraitMessage');
+
+
         // Thay thế createPdfButton bằng 2 nút mới
         const createGcnPdfButton = document.getElementById('createGcnPdfButton');
         const createCccdPdfButton = document.getElementById('createCccdPdfButton');
@@ -179,6 +243,10 @@
         let croppedImage2 = null;  
         let croppedImage3 = null;  
         let croppedImage4 = null;  
+        
+        // Lưu trữ giá trị filter hiện tại
+        let currentBrightness = 100;
+        let currentContrast = 100;
 
         let cropBox = { x: 0, y: 0, width: 0, height: 0 };
         const HANDLE_SIZE = 15; 
@@ -242,6 +310,12 @@
 
             createGcnPdfButton.disabled = !gcnReady;
             createCccdPdfButton.disabled = !cccdReady;
+            
+            // Bật/tắt nút tạo ảnh ID
+            const isImageLoaded = originalImage !== null;
+            crop2x3Button.disabled = !isImageLoaded;
+            crop3x4Button.disabled = !isImageLoaded;
+            crop4x6Button.disabled = !isImageLoaded;
         }
         
         // --- HÀM HỖ TRỢ CHUNG (GHÉP PDF) ---
@@ -263,6 +337,25 @@
                     break;
             }
         }
+        
+        function showPortraitMessage(message, type = 'info') {
+            portraitMessage.textContent = message;
+            portraitMessage.className = 'mt-4 p-3 text-sm rounded-lg';
+            portraitMessage.classList.remove('hidden');
+
+            switch (type) {
+                case 'error':
+                    portraitMessage.classList.add('text-red-700', 'bg-red-100', 'border-red-300');
+                    break;
+                case 'success':
+                    portraitMessage.classList.add('text-green-700', 'bg-green-100', 'border-green-300');
+                    break;
+                case 'info':
+                default:
+                    portraitMessage.classList.add('text-blue-700', 'bg-blue-100', 'border-blue-300');
+                    break;
+            }
+        }
 
         // --- HÀM XỬ LÝ ẢNH & CANVAS ---
 
@@ -279,6 +372,9 @@
 
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
+
+            // Áp dụng bộ lọc Canvas API (chỉ áp dụng nếu không dùng CSS filter)
+            // Nếu dùng CSS filter thì không cần áp dụng filter ở đây, nhưng phải nhớ lưu trạng thái filter vào originalImage khi nhấn Apply.
 
             ctx.save();
             ctx.translate(canvasWidth / 2, canvasHeight / 2);
@@ -342,6 +438,9 @@
             tempCanvas.width = rotatedWidth;
             tempCanvas.height = rotatedHeight;
 
+            // Áp dụng filter CSS (nếu có) vào tempCanvas TRƯỚC KHI vẽ ảnh
+            tempCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+
             tempCtx.save();
             tempCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
             tempCtx.rotate(rotation * Math.PI / 180);
@@ -354,8 +453,24 @@
             finalCanvas.height = cropHeight;
 
             try {
-                const imageData = tempCtx.getImageData(sourceX, sourceY, cropWidth, cropHeight);
-                finalCtx.putImageData(imageData, 0, 0);
+                // Áp dụng bộ lọc cho dữ liệu ảnh trước khi cắt (Để đảm bảo filter CSS được áp dụng)
+                // Do không có cách chuẩn để chuyển CSS Filter sang Canvas, ta phải lấy ảnh đã áp dụng filter từ tempCanvas
+                // Cần 2 canvas mới để thực hiện điều này một cách an toàn và áp dụng filter bằng cách vẽ lại
+                
+                const filterCanvas = document.createElement('canvas');
+                const filterCtx = filterCanvas.getContext('2d');
+                filterCanvas.width = rotatedWidth;
+                filterCanvas.height = rotatedHeight;
+                filterCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+
+                // Vẽ ảnh gốc lên canvas có filter
+                filterCtx.drawImage(originalImage, 0, 0, rotatedWidth, rotatedHeight);
+                
+                // Lấy dữ liệu ảnh đã lọc
+                const filteredImageData = filterCtx.getImageData(sourceX, sourceY, cropWidth, cropHeight);
+                
+                // Cắt
+                finalCtx.putImageData(filteredImageData, 0, 0);
             } catch (error) {
                 console.error("Lỗi khi lấy/đặt dữ liệu ảnh:", error);
                 return null;
@@ -363,11 +478,12 @@
 
             return finalCanvas.toDataURL('image/jpeg', 0.95);
         }
-
+        
         // --- HÀM LÀM NÉT ẢNH (SHARPEN) ---
         
-        // Hàm tiện ích: Áp dụng bộ lọc Convolution
+        // Hàm tiện ích: Áp dụng bộ lọc Convolution (Giữ nguyên)
         function applyConvolutionFilter(pixels, weights) {
+            // ... (Code áp dụng Convolution Filter)
             const side = Math.round(Math.sqrt(weights.length));
             const halfSide = Math.floor(side / 2);
             const src = pixels.data;
@@ -406,7 +522,7 @@
             return output;
         }
 
-        // Hàm xử lý: Làm nét ảnh
+        // Hàm xử lý: Làm nét ảnh (Giữ nguyên)
         function sharpenImage() {
             if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
 
@@ -421,36 +537,52 @@
 
                 canvas.width = rotatedWidth;
                 canvas.height = rotatedHeight;
+                canvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`; // Áp dụng filter CSS
+
                 ctx.save();
                 ctx.translate(rotatedWidth / 2, rotatedHeight / 2);
                 ctx.rotate(rotation * Math.PI / 180);
                 ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
                 ctx.restore();
 
-                // 1. Lấy dữ liệu pixel
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                // Do bộ lọc Convolution không thể áp dụng trực tiếp lên ảnh đã có CSS Filter,
+                // ta phải lấy ảnh đã áp dụng filter để làm nét (cách an toàn là tạo canvas phụ)
+
+                const filterCanvas = document.createElement('canvas');
+                const filterCtx = filterCanvas.getContext('2d');
+                filterCanvas.width = rotatedWidth;
+                filterCanvas.height = rotatedHeight;
+                // Áp dụng filter CSS bằng cách vẽ lại ảnh đã có filter lên canvas mới
+                filterCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+                filterCtx.drawImage(originalImage, 0, 0, rotatedWidth, rotatedHeight);
+
+                // Lấy dữ liệu pixel đã có filter
+                const imageData = filterCtx.getImageData(0, 0, filterCanvas.width, filterCanvas.height);
                 
-                // 2. Định nghĩa Kernel Làm Nét (Sharpening Kernel)
-                const sharpenWeights = [
-                    0, -1, 0,
-                    -1, 5, -1,
-                    0, -1, 0
-                ];
+                // Định nghĩa Kernel Làm Nét (Sharpening Kernel)
+                const sharpenWeights = [ 0, -1, 0, -1, 5, -1, 0, -1, 0 ];
                 
-                // 3. Áp dụng bộ lọc
+                // Áp dụng bộ lọc
                 const sharpenedData = applyConvolutionFilter(imageData, sharpenWeights);
                 
-                // 4. Ghi dữ liệu pixel đã xử lý trở lại canvas
+                // Ghi dữ liệu pixel đã xử lý trở lại canvas chính (xóa filter CSS)
+                canvas.style.filter = 'brightness(100%) contrast(100%)'; 
                 ctx.putImageData(sharpenedData, 0, 0);
 
-                // Cập nhật originalImage để lưu trữ trạng thái mới của ảnh
+                // Cập nhật originalImage để lưu trữ trạng thái mới của ảnh (bao gồm cả filter và sharpen)
                 const newImage = new Image();
                 newImage.onload = () => {
                     originalImage = newImage;
-                    rotationAngle = 0; // Đặt lại góc xoay vì ảnh mới đã được xoay và vẽ phẳng lên canvas
+                    currentBrightness = 100; // Reset filter sau khi áp dụng vĩnh viễn
+                    currentContrast = 100;
+                    brightnessSlider.value = 100;
+                    contrastSlider.value = 100;
+                    brightnessValue.textContent = '100%';
+                    contrastValue.textContent = '100%';
+                    rotationAngle = 0; 
                     initCropBox();
                     drawImage(); // Vẽ lại để cập nhật overlay
-                    showMessage('Đã áp dụng bộ lọc Làm Nét Ảnh thành công!', 'success');
+                    showMessage('Đã áp dụng bộ lọc Làm Nét Ảnh thành công! Độ sáng/tương phản đã được đặt lại 100%.', 'success');
                 };
                 newImage.src = canvas.toDataURL('image/jpeg', 0.95);
                 
@@ -460,10 +592,83 @@
             }
         }
         
+        // --- HÀM TẠO ẢNH ID (MỚI) ---
+        function createIdPortrait(ratioW, ratioH) {
+            if (!originalImage) { showPortraitMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
+
+            try {
+                showPortraitMessage(`Đang tạo ảnh chân dung ${ratioW}x${ratioH}mm... Vui lòng chờ.`, 'info');
+                
+                // 1. Cắt ảnh theo khung đã chọn và tỷ lệ W/H
+                const croppedDataUrl = cropImage(); 
+                if (!croppedDataUrl) {
+                    showPortraitMessage('Lỗi khi cắt ảnh. Vui lòng kiểm tra khung cắt.', 'error');
+                    return;
+                }
+                
+                const background = backgroundSelect.value;
+                const backgroundColor = background === 'blue' ? '#0070c0' : '#FFFFFF'; // Màu Xanh Chuẩn
+                const ratio = ratioW / ratioH;
+                
+                // Kích thước chuẩn tính bằng mm (tương đối)
+                const finalWidthMM = ratioW;
+                const finalHeightMM = ratioH;
+
+                // Kích thước đầu ra: Dùng kích thước lớn để ảnh không bị vỡ (ví dụ 500px/cm)
+                const scaleFactor = 10; // 1mm = 10px để giữ chất lượng (87mm = 870px)
+                const outputWidthPx = finalWidthMM * scaleFactor;
+                const outputHeightPx = finalHeightMM * scaleFactor;
+
+                const finalCanvas = document.createElement('canvas');
+                const finalCtx = finalCanvas.getContext('2d');
+                finalCanvas.width = outputWidthPx;
+                finalCanvas.height = outputHeightPx;
+
+                // 2. Vẽ nền màu (Xanh/Trắng)
+                finalCtx.fillStyle = backgroundColor;
+                finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+                // 3. Vẽ ảnh đã cắt lên trên nền
+                const img = new Image();
+                img.onload = () => {
+                    // Fit ảnh vào nền, giữ nguyên tỷ lệ ảnh đã cắt
+                    let imageW = outputWidthPx;
+                    let imageH = imageW / (img.width / img.height); // Chiều cao mới theo tỷ lệ ảnh đã cắt
+
+                    // Căn giữa ảnh trong khung (chỉ căn giữa ngang, dịch lên một chút nếu cần)
+                    const startX = 0;
+                    const startY = (outputHeightPx - imageH) / 2; 
+
+                    // Lại vẽ ảnh: Đã cắt & có filter áp dụng từ hàm cropImage()
+                    finalCtx.drawImage(img, startX, startY, imageW, imageH);
+
+                    // 4. Tải xuống
+                    const url = finalCanvas.toDataURL('image/jpeg', 0.98);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Anh_ID_${ratioW}x${ratioH}mm_${background}_${Date.now()}.jpeg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    showPortraitMessage(`Đã tạo và tải xuống ảnh chân dung ${ratioW}x${ratioH}mm nền ${background} thành công!`, 'success');
+                };
+                img.src = croppedDataUrl;
+
+            } catch (error) {
+                console.error("LỖI KHI TẠO ẢNH ID:", error);
+                showPortraitMessage(`LỖI: Không thể tạo ảnh chân dung. Chi tiết lỗi: ${error.message}.`, 'error');
+            }
+        }
+        
+        // --- HÀM TẠO PDF (Giữ nguyên) ---
+        // ... (createGcnPdfFromMultipleImages, createCccdPdfFromTwoImages, mergePdfs) ...
+        
         /**
          * Chế độ GCN: Xuất mỗi ảnh đã cắt ra một trang PDF A4 Ngang riêng biệt, co giãn để vừa chiều rộng.
          */
         function createGcnPdfFromMultipleImages() {
+            // ... (Code tạo PDF GCN) ...
             const imagesData = [croppedImage1, croppedImage2, croppedImage3, croppedImage4];
             const images = imagesData.filter(img => img !== null);
             
@@ -538,6 +743,7 @@
          * Chế độ CCCD: Ghép ảnh Phần 1 & Phần 2 vào 1 trang PDF A4 Ngang với kích thước chuẩn.
          */
         function createCccdPdfFromTwoImages() {
+            // ... (Code tạo PDF CCCD) ...
             if (!croppedImage1 || !croppedImage2) {
                 showMessage('Vui lòng cắt và lưu cả Phần 1 và Phần 2 để ghép CCCD (2 Mặt).', 'error');
                 return;
@@ -596,9 +802,9 @@
             }
         }
 
-        // --- LOGIC GHÉP PDF ---
-
+        // --- LOGIC GHÉP PDF (Giữ nguyên) ---
         async function mergePdfs() {
+            // ... (Code ghép PDF) ...
             const files = pdfFileInput.files;
             if (files.length < 2) {
                 showMergeMessage('Vui lòng chọn ít nhất 2 file PDF để ghép.', 'error');
@@ -650,8 +856,9 @@
                 pdfFileInput.dispatchEvent(new Event('change'));
             }
         }
-
+        
         // --- HÀM XỬ LÝ TƯƠNG TÁC (KÉO THẢ) (Giữ nguyên) ---
+        // ... (getHandleAt, getMousePos, handleMouseDown, handleMouseMove, handleMouseUp, getTouchPos, handleTouchStart, handleTouchMove, handleTouchEnd, updateCropBox) ...
         
         function getHandleAt(x, y) {
             const { x: cx, y: cy, width: cw, height: ch } = cropBox;
@@ -807,7 +1014,7 @@
             cropBox.width = newW;
             cropBox.height = newH;
         }
-
+        
         // --- EVENT LISTENERS KHỞI TẠO ---
 
         function initCropBox(box = null) {
@@ -858,11 +1065,21 @@
                 originalImage.onload = () => {
                     rotationAngle = 0; 
                     
+                    // Reset color filters
+                    currentBrightness = 100;
+                    currentContrast = 100;
+                    brightnessSlider.value = 100;
+                    contrastSlider.value = 100;
+                    canvas.style.filter = 'brightness(100%) contrast(100%)';
+                    brightnessValue.textContent = '100%';
+                    contrastValue.textContent = '100%';
+
                     controls.style.display = 'block'; 
                     
                     drawImage(); 
                     initCropBox();
                     drawImage(); 
+                    updateStatus(); // Cập nhật trạng thái nút ID
                     showMessage(`Ảnh đã được tải (${file.name}). Sử dụng chuột để kéo thả khung cắt.`, 'success');
                     
                     canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -892,6 +1109,11 @@
             showMessage('Tính năng "Làm Phẳng Ảnh" đang trong giai đoạn phát triển (Beta) do yêu cầu thư viện Computer Vision phức tạp (như OpenCV.js).', 'info');
         });
         
+        // Event xóa đối tượng thừa
+        removeObjectButton.addEventListener('click', () => {
+            showMessage('Công cụ "Xóa Đối Tượng Thừa" yêu cầu mô hình AI xử lý ảnh phức tạp (Inpainting) và không thể tích hợp trực tiếp vào trình duyệt qua Canvas/JavaScript thông thường.', 'error');
+        });
+
         // Event tự động cắt
         autoCropButton.addEventListener('click', () => {
             if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
@@ -915,27 +1137,94 @@
             showMessage('Khung cắt đã được đặt lại là toàn bộ ảnh. Bạn có thể kéo thả để vẽ khung mới.', 'info');
         });
 
+        // --- CÁC EVENT CHỈNH MÀU SẮC THỦ CÔNG ---
+        
+        function updateColorFilter() {
+            if (!originalImage) return;
+            currentBrightness = brightnessSlider.value;
+            currentContrast = contrastSlider.value;
+            
+            canvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+            brightnessValue.textContent = `${currentBrightness}%`;
+            contrastValue.textContent = `${currentContrast}%`;
+        }
+        
+        brightnessSlider.addEventListener('input', updateColorFilter);
+        contrastSlider.addEventListener('input', updateColorFilter);
+
+        applyColorButton.addEventListener('click', () => {
+            if (!originalImage) { showMessage('Vui lòng tải ảnh lên trước.', 'error'); return; }
+            
+            showMessage('Đang áp dụng Độ sáng/Tương phản vĩnh viễn... Vui lòng chờ.', 'info');
+
+            // 1. Tạm thời vẽ ảnh lên canvas với filter CSS hiện tại
+            const rotation = rotationAngle % 360;
+            const isRotated = rotation === 90 || rotation === 270;
+            const rotatedWidth = isRotated ? originalImage.height : originalImage.width;
+            const rotatedHeight = isRotated ? originalImage.width : originalImage.height;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = rotatedWidth;
+            tempCanvas.height = rotatedHeight;
+            tempCanvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+            
+            tempCtx.drawImage(originalImage, 0, 0, rotatedWidth, rotatedHeight);
+
+            // 2. Lấy DataURL của ảnh đã áp dụng filter
+            const newImageSrc = tempCanvas.toDataURL('image/jpeg', 0.95);
+            
+            // 3. Tải lại ảnh mới vào originalImage
+            const newImage = new Image();
+            newImage.onload = () => {
+                originalImage = newImage;
+                
+                // 4. Reset filter CSS và slider
+                currentBrightness = 100;
+                currentContrast = 100;
+                brightnessSlider.value = 100;
+                contrastSlider.value = 100;
+                canvas.style.filter = 'brightness(100%) contrast(100%)';
+                brightnessValue.textContent = '100%';
+                contrastValue.textContent = '100%';
+                
+                // 5. Vẽ lại ảnh mới lên canvas chính
+                rotationAngle = 0; 
+                initCropBox();
+                drawImage(); 
+                showMessage('Đã áp dụng chỉnh sửa màu sắc vĩnh viễn. Bộ lọc đã được đặt lại 100%.', 'success');
+            };
+            newImage.src = newImageSrc;
+        });
+
+
         // --- CÁC HÀM LƯU PHẦN 1 ĐẾN PHẦN 4 ---
         savePart1Button.addEventListener('click', () => {
             const resultDataUrl = cropImage();
-            if (resultDataUrl) { croppedImage1 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 1!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error'); }
+            if (resultDataUrl) { croppedImage1 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 1!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại hoặc kiểm tra khung cắt.', 'error'); }
         });
 
         savePart2Button.addEventListener('click', () => {
             const resultDataUrl = cropImage();
-            if (resultDataUrl) { croppedImage2 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 2!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error'); }
+            if (resultDataUrl) { croppedImage2 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 2!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại hoặc kiểm tra khung cắt.', 'error'); }
         });
         
         savePart3Button.addEventListener('click', () => {
             const resultDataUrl = cropImage();
-            if (resultDataUrl) { croppedImage3 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 3!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error'); }
+            if (resultDataUrl) { croppedImage3 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 3!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại hoặc kiểm tra khung cắt.', 'error'); }
         });
 
         savePart4Button.addEventListener('click', () => {
             const resultDataUrl = cropImage();
-            if (resultDataUrl) { croppedImage4 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 4!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại.', 'error'); }
+            if (resultDataUrl) { croppedImage4 = resultDataUrl; updateStatus(); showMessage('Đã Cắt và Lưu ảnh Phần 4!', 'success'); } else { showMessage('Lỗi khi cắt ảnh. Vui lòng tải ảnh lên lại hoặc kiểm tra khung cắt.', 'error'); }
         });
         
+        // --- EVENT LISTENERS CHO TẠO ẢNH ID ---
+        crop2x3Button.addEventListener('click', () => createIdPortrait(20, 30)); // 2x3 cm -> 20x30 mm
+        crop3x4Button.addEventListener('click', () => createIdPortrait(30, 40)); // 3x4 cm -> 30x40 mm
+        crop4x6Button.addEventListener('click', () => createIdPortrait(40, 60)); // 4x6 cm -> 40x60 mm
+
+
         // --- EVENT LISTENERS CHO TẠO PDF ---
         createGcnPdfButton.addEventListener('click', createGcnPdfFromMultipleImages);
         createCccdPdfButton.addEventListener('click', createCccdPdfFromTwoImages);
@@ -966,6 +1255,7 @@
         // Khởi tạo trạng thái ban đầu
         updateStatus(); 
         showMergeMessage('Chọn các file PDF bạn muốn ghép lại thành một file duy nhất.', 'info');
+        showPortraitMessage('Chọn khung cắt phù hợp cho ảnh chân dung ID, sau đó chọn kích thước và nền để tải xuống.', 'info');
     </script>
 </body>
 </html>
