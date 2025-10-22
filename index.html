@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xử Lý Ảnh và Ghép PDF)</title>
+    <title>Công Cụ Xử Lý Ảnh và Ghép PDF</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script> 
@@ -12,28 +12,47 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0/dist/body-pix.min.js"></script>
     
     <style>
-        /* Đảm bảo canvas có thể mở rộng */
         #imageCanvas {
             max-width: 100%;
             height: auto;
             border: 2px dashed #3B82F6;
             margin-top: 1rem;
-            background-color: #ffffff; /* Nền trắng cho canvas */
-            /* Cần thiết lập position: relative để các lớp overlay vẽ đúng */
+            background-color: #ffffff;
             position: relative; 
             cursor: default;
-            /* Thêm filter CSS để áp dụng hiệu ứng độ sáng/tương phản */
             filter: brightness(100%) contrast(100%); 
         }
-        /* Sử dụng font Inter cho thẩm mỹ */
+        
         body {
             font-family: 'Inter', sans-serif;
-            /* Thêm ảnh nền phong cảnh Việt Nam */
             background-image: url('https://cdn.pixabay.com/photo/2016/06/15/22/41/vietnam-1459891_1280.jpg');
-            background-size: cover; /* Đảm bảo ảnh nền phủ kín trang */
-            background-attachment: fixed; /* Giữ ảnh nền cố định khi cuộn */
-            background-color: #f7f9fb; /* Màu dự phòng */
-            scroll-behavior: smooth; /* Cuộn mượt khi nhấn nút */
+            background-size: cover;
+            background-attachment: fixed;
+            background-color: #f7f9fb;
+            scroll-behavior: smooth;
+        }
+        
+        .range-lg {
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .range-lg::-webkit-slider-thumb {
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3B82F6;
+            cursor: pointer;
+        }
+        
+        .range-lg::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3B82F6;
+            cursor: pointer;
+            border: none;
         }
     </style>
 </head>
@@ -275,12 +294,10 @@
         const merge2x1Button = document.getElementById('merge2x1Button');
         const merge2x2Button = document.getElementById('merge2x2Button');
 
-
         // Thay thế createPdfButton bằng 2 nút mới
         const createGcnPdfButton = document.getElementById('createGcnPdfButton');
         const createCccdPdfButton = document.getElementById('createCccdPdfButton');
         
-        const controls = document.getElementById('controls');
         const canvas = document.getElementById('imageCanvas');
         const ctx = canvas.getContext('2d');
         const messageBox = document.getElementById('messageBox');
@@ -324,7 +341,6 @@
         const pdfFileInput = document.getElementById('pdfFileInput');
         const mergePdfButton = document.getElementById('mergePdfButton');
         const pdfMergeMessage = document.getElementById('pdfMergeMessage'); 
-
 
         // --- HÀM HỖ TRỢ CHUNG (CẮT ẢNH) ---
 
@@ -639,6 +655,19 @@
             }
         }
         
+        // --- HÀM CẬP NHẬT BỘ LỌC MÀU SẮC (THÊM VÀO) ---
+        function updateColorFilter() {
+            if (!originalImage) return;
+            
+            currentBrightness = brightnessSlider.value;
+            currentContrast = contrastSlider.value;
+            
+            brightnessValue.textContent = `${currentBrightness}%`;
+            contrastValue.textContent = `${currentContrast}%`;
+            
+            canvas.style.filter = `brightness(${currentBrightness}%) contrast(${currentContrast}%)`;
+        }
+        
         // --- HÀM TẢI MÔ HÌNH AI (MỚI) ---
         async function loadBodyPixModel() {
             if (bodyPixNet === null && !isModelLoading) {
@@ -653,7 +682,7 @@
                     });
                     showPortraitMessage('Đã tải mô hình AI thành công! Sẵn sàng xóa nền.', 'success');
                 } catch (error) {
-                    console.error("LỖỖI KHI TẢI MÔ HÌNH BODYPIX:", error);
+                    console.error("LỖI KHI TẢI MÔ HÌNH BODYPIX:", error);
                     showPortraitMessage('LỖI: Không thể tải mô hình AI BodyPix. Tính năng AI sẽ không hoạt động.', 'error');
                 } finally {
                     isModelLoading = false;
